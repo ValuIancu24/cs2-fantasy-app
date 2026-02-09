@@ -9,7 +9,7 @@
       "score": "2-0",
       "winner": "Spirit",
       "player_stats": [
-        { "player_id": "2", "rating": 1.25, "team": "Spirit" },
+        { "player_id": "2", "rating": 1.65, "team": "Spirit" },
         { "player_id": "5", "rating": 1.18, "team": "Spirit" },
         { "player_id": "19", "rating": 1.05, "team": "Spirit" },
         { "player_id": "22", "rating": 0.98, "team": "Spirit" },
