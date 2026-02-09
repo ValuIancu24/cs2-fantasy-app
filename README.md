@@ -5,27 +5,25 @@ A full-stack Counter-Strike 2 fantasy esports web application with leagues, team
 ## Tech Stack
 
 - **Frontend**: Vite + React 18, React Router v6, CSS Modules (plain CSS files), Fetch API
-- **Backend**: Node.js, Express, SQLite (better-sqlite3), bcrypt, JSON Web Tokens (JWT), CORS, Multer
+- **Backend**: Node.js, Express, SQLite (sqlite3), bcrypt, JSON Web Tokens (JWT), CORS, Multer
 
 ## Project Structure
 
-- `client/` – Vite + React frontend
-- `server/` – Node.js + Express backend with SQLite
-- `data/` – Static JSON data for players, teams, and scenarios
+- `client/` — Vite + React frontend
+- `server/` — Node.js + Express backend with SQLite
+- `data/` — Static JSON data for players, teams, and scenarios
 
 ## Setup Instructions
 
 ### 1. Environment Variables
 
 Create a `.env` file in the project root:
-
 ```bash
 JWT_SECRET=your-secret-key-here
 PORT=5000
 ```
 
 ### 2. Backend Setup
-
 ```bash
 cd server
 npm install
@@ -35,7 +33,6 @@ npm start
 The backend will start on `http://localhost:5000`.
 
 ### 3. Frontend Setup
-
 ```bash
 cd client
 npm install
@@ -63,3 +60,8 @@ These credentials are inserted automatically into the database on first server s
 8. Simulate matches from the admin dashboard
 9. View league leaderboard
 
+## Development Notes
+
+- Database file: `server/database.db` (auto-created on first run)
+- SQLite3 package used instead of better-sqlite3 for Windows compatibility
+- All routes converted to async callbacks for sqlite3 compatibility
