@@ -1,0 +1,26 @@
+.myteam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.myteam-card {
+  background: rgba(14, 3, 40, 0.95);
+  border-radius: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.myteam .player-image {
+  width: 52px;
+  height: 52px;
+  border-radius: 0.7rem;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.16), rgba(115, 21, 188, 0.25));
+}
+
+.match-section {
+  margin-top: 1.2rem;
+}
+

@@ -1,0 +1,76 @@
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  min-height: 340px;
+  padding: 2.5rem 2rem;
+  background: radial-gradient(circle at top left, #9a3ce3, #280045);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-content {
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+}
+
+.home-content h1 {
+  font-size: 2.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-content p {
+  font-size: 1rem;
+  color: rgba(249, 244, 255, 0.9);
+  margin-bottom: 1.2rem;
+}
+
+.home-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.home-overlay {
+  position: absolute;
+  width: 160px;
+  height: 220px;
+  border-radius: 1.5rem;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(115, 21, 188, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 40px rgba(0, 0, 0, 0.55);
+}
+
+.home-player-1 {
+  right: 10%;
+  top: 10%;
+}
+
+.home-player-2 {
+  right: 25%;
+  bottom: 5%;
+}
+
+.home-player-3 {
+  right: -2%;
+  bottom: 18%;
+}
+
+@media (max-width: 768px) {
+  .home-hero {
+    padding: 1.7rem 1.3rem;
+    min-height: 280px;
+  }
+
+  .home-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .home-overlay {
+    opacity: 0.3;
+  }
+}
+

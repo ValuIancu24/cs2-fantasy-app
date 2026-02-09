@@ -1,0 +1,43 @@
+.leaderboard table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.leaderboard th,
+.leaderboard td {
+  padding: 0.45rem 0.4rem;
+  text-align: left;
+}
+
+.leaderboard thead {
+  background: rgba(30, 5, 70, 0.95);
+}
+
+.leaderboard tbody tr:nth-child(even) {
+  background: rgba(15, 3, 40, 0.8);
+}
+
+.leaderboard tbody tr:nth-child(odd) {
+  background: rgba(11, 1, 30, 0.9);
+}
+
+.highlight-row {
+  box-shadow: inset 0 0 0 1px rgba(210, 168, 255, 0.7);
+}
+
+.leaderboard-controls {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.6rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+

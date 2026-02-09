@@ -1,0 +1,323 @@
+[
+  {
+    "id": "1",
+    "name": "ZywOo",
+    "real_team": "Vitality",
+    "role": "AWPer",
+    "price": 235000,
+    "image": "zywoo.jpg"
+  },
+  {
+    "id": "2",
+    "name": "donk",
+    "real_team": "Spirit",
+    "role": "Rifler",
+    "price": 235000,
+    "image": "donk.jpg"
+  },
+  {
+    "id": "3",
+    "name": "ropz",
+    "real_team": "Vitality",
+    "role": "Lurker",
+    "price": 225000,
+    "image": "ropz.jpg"
+  },
+  {
+    "id": "4",
+    "name": "m0NESY",
+    "real_team": "Falcons",
+    "role": "AWPer",
+    "price": 220000,
+    "image": "monesy.jpg"
+  },
+  {
+    "id": "5",
+    "name": "sh1ro",
+    "real_team": "Spirit",
+    "role": "AWPer",
+    "price": 215000,
+    "image": "sh1ro.jpg"
+  },
+  {
+    "id": "6",
+    "name": "flameZ",
+    "real_team": "Vitality",
+    "role": "Entry",
+    "price": 210000,
+    "image": "flamez.jpg"
+  },
+  {
+    "id": "7",
+    "name": "NiKo",
+    "real_team": "Falcons",
+    "role": "Rifler",
+    "price": 205000,
+    "image": "niko.jpg"
+  },
+  {
+    "id": "8",
+    "name": "mezii",
+    "real_team": "Vitality",
+    "role": "Support",
+    "price": 205000,
+    "image": "mezii.jpg"
+  },
+  {
+    "id": "9",
+    "name": "frozen",
+    "real_team": "FaZe",
+    "role": "Rifler",
+    "price": 205000,
+    "image": "frozen.jpg"
+  },
+  {
+    "id": "10",
+    "name": "Twistzz",
+    "real_team": "FaZe",
+    "role": "Rifler",
+    "price": 200000,
+    "image": "twistzz.jpg"
+  },
+  {
+    "id": "11",
+    "name": "KSCERATO",
+    "real_team": "FURIA",
+    "role": "Rifler",
+    "price": 195000,
+    "image": "kscerato.jpg"
+  },
+  {
+    "id": "12",
+    "name": "Spinx",
+    "real_team": "MOUZ",
+    "role": "Rifler",
+    "price": 190000,
+    "image": "spinx.jpg"
+  },
+  {
+    "id": "13",
+    "name": "torzsi",
+    "real_team": "MOUZ",
+    "role": "AWPer",
+    "price": 190000,
+    "image": "torzsi.jpg"
+  },
+  {
+    "id": "14",
+    "name": "xertioN",
+    "real_team": "MOUZ",
+    "role": "Entry",
+    "price": 185000,
+    "image": "xertion.jpg"
+  },
+  {
+    "id": "15",
+    "name": "w0nderful",
+    "real_team": "Natus Vincere",
+    "role": "AWPer",
+    "price": 185000,
+    "image": "w0nderful.jpg"
+  },
+  {
+    "id": "16",
+    "name": "molodoy",
+    "real_team": "FURIA",
+    "role": "AWPer",
+    "price": 185000,
+    "image": "molodoy.jpg"
+  },
+  {
+    "id": "17",
+    "name": "b1t",
+    "real_team": "Natus Vincere",
+    "role": "Rifler",
+    "price": 180000,
+    "image": "b1t.jpg"
+  },
+  {
+    "id": "18",
+    "name": "iM",
+    "real_team": "Natus Vincere",
+    "role": "Support",
+    "price": 180000,
+    "image": "im.jpg"
+  },
+  {
+    "id": "19",
+    "name": "magixx",
+    "real_team": "Spirit",
+    "role": "IGL",
+    "price": 180000,
+    "image": "magixx.jpg"
+  },
+  {
+    "id": "20",
+    "name": "FalleN",
+    "real_team": "FURIA",
+    "role": "IGL",
+    "price": 180000,
+    "image": "fallen.jpg"
+  },
+  {
+    "id": "21",
+    "name": "YEKINDAR",
+    "real_team": "FURIA",
+    "role": "Rifler",
+    "price": 180000,
+    "image": "yekindar.jpg"
+  },
+  {
+    "id": "22",
+    "name": "zont1x",
+    "real_team": "Spirit",
+    "role": "Support",
+    "price": 175000,
+    "image": "zont1x.jpg"
+  },
+  {
+    "id": "23",
+    "name": "tN1R",
+    "real_team": "Spirit",
+    "role": "Rifler",
+    "price": 175000,
+    "image": "tn1r.jpg"
+  },
+  {
+    "id": "24",
+    "name": "Brollan",
+    "real_team": "MOUZ",
+    "role": "IGL",
+    "price": 175000,
+    "image": "brollan.jpg"
+  },
+  {
+    "id": "25",
+    "name": "Jimpphat",
+    "real_team": "MOUZ",
+    "role": "Rifler",
+    "price": 175000,
+    "image": "jimpphat.jpg"
+  },
+  {
+    "id": "26",
+    "name": "apEX",
+    "real_team": "Vitality",
+    "role": "IGL",
+    "price": 175000,
+    "image": "apex.jpg"
+  },
+  {
+    "id": "27",
+    "name": "yuurih",
+    "real_team": "FURIA",
+    "role": "Support",
+    "price": 175000,
+    "image": "yuurih.jpg"
+  },
+  {
+    "id": "28",
+    "name": "karrigan",
+    "real_team": "FaZe",
+    "role": "IGL",
+    "price": 170000,
+    "image": "karrigan.jpg"
+  },
+  {
+    "id": "29",
+    "name": "broky",
+    "real_team": "FaZe",
+    "role": "AWPer",
+    "price": 170000,
+    "image": "broky.jpg"
+  },
+  {
+    "id": "30",
+    "name": "jcobbb",
+    "real_team": "FaZe",
+    "role": "Support",
+    "price": 170000,
+    "image": "jcobbb.jpg"
+  },
+  {
+    "id": "31",
+    "name": "Aleksib",
+    "real_team": "Natus Vincere",
+    "role": "IGL",
+    "price": 170000,
+    "image": "aleksib.jpg"
+  },
+  {
+    "id": "32",
+    "name": "makazze",
+    "real_team": "Natus Vincere",
+    "role": "Support",
+    "price": 170000,
+    "image": "makazze.jpg"
+  },
+  {
+    "id": "33",
+    "name": "TeSeS",
+    "real_team": "Falcons",
+    "role": "Rifler",
+    "price": 170000,
+    "image": "teses.jpg"
+  },
+  {
+    "id": "34",
+    "name": "kyxsan",
+    "real_team": "Falcons",
+    "role": "IGL",
+    "price": 170000,
+    "image": "kyxsan.jpg"
+  },
+  {
+    "id": "35",
+    "name": "kyousuke",
+    "real_team": "Falcons",
+    "role": "Rifler",
+    "price": 170000,
+    "image": "kyousuke.jpg"
+  },
+  {
+    "id": "36",
+    "name": "bLitz",
+    "real_team": "The MongolZ",
+    "role": "IGL",
+    "price": 165000,
+    "image": "blitz.jpg"
+  },
+  {
+    "id": "37",
+    "name": "Techno4K",
+    "real_team": "The MongolZ",
+    "role": "Rifler",
+    "price": 165000,
+    "image": "techno4k.jpg"
+  },
+  {
+    "id": "38",
+    "name": "910",
+    "real_team": "The MongolZ",
+    "role": "AWPer",
+    "price": 165000,
+    "image": "910.jpg"
+  },
+  {
+    "id": "39",
+    "name": "mzinho",
+    "real_team": "The MongolZ",
+    "role": "Support",
+    "price": 165000,
+    "image": "mzinho.jpg"
+  },
+  {
+    "id": "40",
+    "name": "Senzu",
+    "real_team": "The MongolZ",
+    "role": "Rifler",
+    "price": 165000,
+    "image": "senzu.jpg"
+  }
+]
+

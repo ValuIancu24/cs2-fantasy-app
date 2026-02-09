@@ -1,0 +1,86 @@
+const path = require('path');
+const bcrypt = require('bcrypt');
+const sqlite3 = require('sqlite3').verbose();
+const dbPath = path.join(__dirname, 'database.db');
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) console.error(err);
+  else console.log('✅ Connected to SQLite');
+});
+
+function initDatabase() {
+  db.serialize(() => {
+    db.run('PRAGMA foreign_keys = ON');
+
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT DEFAULT 'user',
+      country_code TEXT,
+      profile_picture TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS leagues (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      creator_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'active',
+      join_code TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (creator_id) REFERENCES users(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS league_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      league_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(league_id, user_id),
+      FOREIGN KEY (league_id) REFERENCES leagues(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS fantasy_teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      league_id INTEGER NOT NULL,
+      team_name TEXT NOT NULL,
+      lineup TEXT NOT NULL,
+      budget_spent INTEGER NOT NULL,
+      total_points INTEGER DEFAULT 0,
+      rating_points INTEGER DEFAULT 0,
+      team_points INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, league_id),
+      UNIQUE(league_id, team_name),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (league_id) REFERENCES leagues(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS simulated_matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_id TEXT NOT NULL,
+      stage_id TEXT NOT NULL,
+      simulated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(match_id)
+    )`);
+
+    db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
+      if (!row) {
+        const passwordHash = bcrypt.hashSync('admin123', 10);
+        db.run(
+          `INSERT INTO users (username, email, password, role, country_code)
+           VALUES (?, ?, ?, ?, ?)`,
+          ['admin', 'admin@example.com', passwordHash, 'admin', 'RO'],
+          () => console.log('✅ Admin user created')
+        );
+      }
+    });
+  });
+}
+
+initDatabase();
+module.exports = db;

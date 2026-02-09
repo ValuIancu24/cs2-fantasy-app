@@ -1,0 +1,36 @@
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr);
+  gap: 1rem;
+}
+
+.scenario-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.stats-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.3rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+.stats-list li {
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

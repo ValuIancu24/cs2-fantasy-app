@@ -1,0 +1,142 @@
+{
+  "scenario_id": 5,
+  "name": "Chaos Mode",
+  "quarter_finals": [
+    {
+      "match_id": "qf1",
+      "team1": "Spirit",
+      "team2": "Falcons",
+      "score": "0-2",
+      "winner": "Falcons",
+      "player_stats": [
+        { "player_id": "2", "rating": 0.98, "team": "Spirit" },
+        { "player_id": "5", "rating": 0.92, "team": "Spirit" },
+        { "player_id": "19", "rating": 0.90, "team": "Spirit" },
+        { "player_id": "22", "rating": 0.88, "team": "Spirit" },
+        { "player_id": "23", "rating": 0.89, "team": "Spirit" },
+        { "player_id": "7", "rating": 1.20, "team": "Falcons" },
+        { "player_id": "4", "rating": 1.18, "team": "Falcons" },
+        { "player_id": "33", "rating": 1.10, "team": "Falcons" },
+        { "player_id": "34", "rating": 1.06, "team": "Falcons" },
+        { "player_id": "35", "rating": 1.12, "team": "Falcons" }
+      ]
+    },
+    {
+      "match_id": "qf2",
+      "team1": "Vitality",
+      "team2": "The MongolZ",
+      "score": "1-2",
+      "winner": "The MongolZ",
+      "player_stats": [
+        { "player_id": "1", "rating": 1.05, "team": "Vitality" },
+        { "player_id": "3", "rating": 1.01, "team": "Vitality" },
+        { "player_id": "6", "rating": 0.98, "team": "Vitality" },
+        { "player_id": "8", "rating": 0.95, "team": "Vitality" },
+        { "player_id": "26", "rating": 0.92, "team": "Vitality" },
+        { "player_id": "36", "rating": 1.22, "team": "The MongolZ" },
+        { "player_id": "37", "rating": 1.18, "team": "The MongolZ" },
+        { "player_id": "38", "rating": 1.16, "team": "The MongolZ" },
+        { "player_id": "39", "rating": 1.10, "team": "The MongolZ" },
+        { "player_id": "40", "rating": 1.08, "team": "The MongolZ" }
+      ]
+    },
+    {
+      "match_id": "qf3",
+      "team1": "FURIA",
+      "team2": "Natus Vincere",
+      "score": "2-0",
+      "winner": "FURIA",
+      "player_stats": [
+        { "player_id": "11", "rating": 1.25, "team": "FURIA" },
+        { "player_id": "16", "rating": 1.18, "team": "FURIA" },
+        { "player_id": "20", "rating": 1.08, "team": "FURIA" },
+        { "player_id": "21", "rating": 1.12, "team": "FURIA" },
+        { "player_id": "27", "rating": 1.05, "team": "FURIA" },
+        { "player_id": "15", "rating": 0.94, "team": "Natus Vincere" },
+        { "player_id": "17", "rating": 0.92, "team": "Natus Vincere" },
+        { "player_id": "18", "rating": 0.90, "team": "Natus Vincere" },
+        { "player_id": "31", "rating": 0.89, "team": "Natus Vincere" },
+        { "player_id": "32", "rating": 0.88, "team": "Natus Vincere" }
+      ]
+    },
+    {
+      "match_id": "qf4",
+      "team1": "MOUZ",
+      "team2": "FaZe",
+      "score": "2-1",
+      "winner": "MOUZ",
+      "player_stats": [
+        { "player_id": "12", "rating": 1.20, "team": "MOUZ" },
+        { "player_id": "13", "rating": 1.18, "team": "MOUZ" },
+        { "player_id": "14", "rating": 1.12, "team": "MOUZ" },
+        { "player_id": "24", "rating": 1.10, "team": "MOUZ" },
+        { "player_id": "25", "rating": 1.08, "team": "MOUZ" },
+        { "player_id": "9", "rating": 0.98, "team": "FaZe" },
+        { "player_id": "10", "rating": 0.95, "team": "FaZe" },
+        { "player_id": "28", "rating": 0.93, "team": "FaZe" },
+        { "player_id": "29", "rating": 0.94, "team": "FaZe" },
+        { "player_id": "30", "rating": 0.92, "team": "FaZe" }
+      ]
+    }
+  ],
+  "semi_finals": [
+    {
+      "match_id": "sf1",
+      "team1": "Falcons",
+      "team2": "The MongolZ",
+      "score": "2-1",
+      "winner": "Falcons",
+      "player_stats": [
+        { "player_id": "7", "rating": 1.24, "team": "Falcons" },
+        { "player_id": "4", "rating": 1.20, "team": "Falcons" },
+        { "player_id": "33", "rating": 1.12, "team": "Falcons" },
+        { "player_id": "34", "rating": 1.10, "team": "Falcons" },
+        { "player_id": "35", "rating": 1.08, "team": "Falcons" },
+        { "player_id": "36", "rating": 1.16, "team": "The MongolZ" },
+        { "player_id": "37", "rating": 1.14, "team": "The MongolZ" },
+        { "player_id": "38", "rating": 1.12, "team": "The MongolZ" },
+        { "player_id": "39", "rating": 1.08, "team": "The MongolZ" },
+        { "player_id": "40", "rating": 1.05, "team": "The MongolZ" }
+      ]
+    },
+    {
+      "match_id": "sf2",
+      "team1": "FURIA",
+      "team2": "MOUZ",
+      "score": "0-2",
+      "winner": "MOUZ",
+      "player_stats": [
+        { "player_id": "11", "rating": 0.96, "team": "FURIA" },
+        { "player_id": "16", "rating": 0.94, "team": "FURIA" },
+        { "player_id": "20", "rating": 0.92, "team": "FURIA" },
+        { "player_id": "21", "rating": 0.93, "team": "FURIA" },
+        { "player_id": "27", "rating": 0.90, "team": "FURIA" },
+        { "player_id": "12", "rating": 1.26, "team": "MOUZ" },
+        { "player_id": "13", "rating": 1.22, "team": "MOUZ" },
+        { "player_id": "14", "rating": 1.18, "team": "MOUZ" },
+        { "player_id": "24", "rating": 1.14, "team": "MOUZ" },
+        { "player_id": "25", "rating": 1.10, "team": "MOUZ" }
+      ]
+    }
+  ],
+  "grand_final": {
+    "match_id": "gf",
+    "team1": "Falcons",
+    "team2": "MOUZ",
+    "score": "3-0",
+    "winner": "Falcons",
+    "player_stats": [
+      { "player_id": "7", "rating": 1.35, "team": "Falcons" },
+      { "player_id": "4", "rating": 1.30, "team": "Falcons" },
+      { "player_id": "33", "rating": 1.22, "team": "Falcons" },
+      { "player_id": "34", "rating": 1.18, "team": "Falcons" },
+      { "player_id": "35", "rating": 1.16, "team": "Falcons" },
+      { "player_id": "12", "rating": 1.10, "team": "MOUZ" },
+      { "player_id": "13", "rating": 1.08, "team": "MOUZ" },
+      { "player_id": "14", "rating": 1.05, "team": "MOUZ" },
+      { "player_id": "24", "rating": 1.02, "team": "MOUZ" },
+      { "player_id": "25", "rating": 1.00, "team": "MOUZ" }
+    ]
+  }
+}
+
