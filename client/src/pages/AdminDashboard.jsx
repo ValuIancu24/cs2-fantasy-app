@@ -2,6 +2,12 @@ import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../App.jsx';
 import '../styles/admin.css';
 
+function formatScheduledTime(isoString) {
+  if (!isoString) return 'TBD';
+  const date = new Date(isoString);
+  return date.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' });
+}
+
 function AdminDashboard() {
   const { apiBase } = useContext(AuthContext);
   const [stageId, setStageId] = useState('quarter_finals');
@@ -9,6 +15,12 @@ function AdminDashboard() {
   const [scenarioId, setScenarioId] = useState(1);
   const [stats, setStats] = useState(null);
   const [message, setMessage] = useState('');
+
+  const [tournamentId, setTournamentId] = useState('');
+  const [tournamentMatches, setTournamentMatches] = useState(null);
+  const [tournamentFetching, setTournamentFetching] = useState(false);
+  const [tournamentSyncing, setTournamentSyncing] = useState(false);
+  const [tournamentMessage, setTournamentMessage] = useState('');
 
   const token = localStorage.getItem('cs2_fantasy_token');
 
@@ -63,6 +75,56 @@ function AdminDashboard() {
     if (type === 'match') body.matchId = matchId;
     if (type === 'stage') body.stageId = stageId;
     callAdmin('reset-match', body);
+  };
+
+  const fetchTournamentMatches = async () => {
+    if (!tournamentId.trim()) {
+      setTournamentMessage('Introdu un Tournament ID valid');
+      return;
+    }
+    setTournamentFetching(true);
+    setTournamentMessage('');
+    setTournamentMatches(null);
+    try {
+      const res = await fetch(`${apiBase}/admin/tournament/${tournamentId.trim()}/matches`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTournamentMessage(data.message || 'Eroare la preluarea meciurilor');
+      } else {
+        setTournamentMatches(data);
+      }
+    } catch {
+      setTournamentMessage('Eroare de rețea');
+    } finally {
+      setTournamentFetching(false);
+    }
+  };
+
+  const syncTournament = async () => {
+    if (!tournamentId.trim()) return;
+    setTournamentSyncing(true);
+    setTournamentMessage('');
+    try {
+      const res = await fetch(`${apiBase}/admin/sync-tournament/${tournamentId.trim()}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTournamentMessage(data.message || 'Sync eșuat');
+      } else {
+        setTournamentMessage(
+          `✅ Sync complet: ${data.teams} echipe, ${data.players} jucători, ${data.matches} meciuri`
+        );
+        fetchStats();
+      }
+    } catch {
+      setTournamentMessage('Eroare de rețea');
+    } finally {
+      setTournamentSyncing(false);
+    }
   };
 
   const changeScenario = async () => {
@@ -147,6 +209,76 @@ function AdminDashboard() {
           </button>
         </div>
         {message && <p className="info-text">{message}</p>}
+      </section>
+
+      <section className="panel tournament-panel">
+        <h2>Grid API — Tournament Sync</h2>
+        <label>
+          Tournament ID
+          <div className="scenario-row">
+            <input
+              type="number"
+              placeholder="ex: 828925"
+              value={tournamentId}
+              onChange={e => setTournamentId(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchTournamentMatches()}
+              style={{ width: '160px' }}
+            />
+            <button
+              type="button"
+              className="btn-outlined small"
+              onClick={fetchTournamentMatches}
+              disabled={tournamentFetching}
+            >
+              {tournamentFetching ? 'Se încarcă...' : 'Previzualizează'}
+            </button>
+            {tournamentMatches && (
+              <button
+                type="button"
+                className="btn-primary small"
+                onClick={syncTournament}
+                disabled={tournamentSyncing}
+              >
+                {tournamentSyncing ? 'Se sincronizează...' : 'Sync în DB'}
+              </button>
+            )}
+          </div>
+        </label>
+
+        {tournamentMessage && <p className="info-text">{tournamentMessage}</p>}
+
+        {tournamentMatches && (
+          <>
+            <p className="muted" style={{ margin: '0.5rem 0 0.4rem' }}>
+              {tournamentMatches.matches[0]?.tournament?.name && (
+                <strong>{tournamentMatches.matches[0].tournament.name}</strong>
+              )}{' '}
+              — {tournamentMatches.totalCount} meciuri găsite
+            </p>
+            <div className="tournament-matches-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Meci</th>
+                    <th>Format</th>
+                    <th>Programat (RO)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tournamentMatches.matches.map((m, i) => (
+                    <tr key={m.id}>
+                      <td className="muted">{i + 1}</td>
+                      <td>{m.teams.length >= 2 ? `${m.teams[0]} vs ${m.teams[1]}` : m.teams[0] || '—'}</td>
+                      <td>{m.format || '—'}</td>
+                      <td>{formatScheduledTime(m.scheduledAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="panel">

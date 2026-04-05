@@ -4,6 +4,8 @@ const fs = require('fs');
 const db = require('../database');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
 const scenarioConfig = require('../config/scenarios');
+const gridApi = require('../services/gridApi');
+const dataAdapter = require('../services/dataAdapter');
 
 const router = express.Router();
 const scenariosBasePath = path.join(__dirname, '..', '..', 'data', 'scenarios');
@@ -232,6 +234,48 @@ router.get('/stats', authMiddleware, requireAdmin, (req, res) => {
       });
     });
   });
+});
+
+// PREVIEW TOURNAMENT MATCHES (no DB write)
+router.get('/tournament/:tournamentId/matches', authMiddleware, requireAdmin, async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  try {
+    const data = await gridApi.getTournamentMatches(tournamentId);
+    const matches = data.edges.map(edge => {
+      const node = edge.node;
+      const teams = node.teams.map(t => t.baseInfo?.name).filter(Boolean);
+      return {
+        id: node.id,
+        teams,
+        title: node.title?.nameShortened || null,
+        scheduledAt: node.startTimeScheduled || null,
+        format: node.format?.nameShortened || null,
+        tournament: node.tournament
+          ? { id: node.tournament.id, name: node.tournament.name, nameShort: node.tournament.nameShortened }
+          : null
+      };
+    });
+    res.json({ totalCount: data.totalCount, matches });
+  } catch (err) {
+    console.error('[ADMIN] Failed to fetch tournament matches:', err.message);
+    res.status(500).json({ message: err.message || 'Failed to fetch matches from Grid API' });
+  }
+});
+
+// SYNC TOURNAMENT TO DB (teams + players)
+router.post('/sync-tournament/:tournamentId', authMiddleware, requireAdmin, async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  try {
+    const result = await dataAdapter.syncTournament(tournamentId);
+    res.json(result);
+  } catch (err) {
+    console.error('[ADMIN] Sync tournament failed:', err.message);
+    res.status(500).json({ message: err.message || 'Sync failed' });
+  }
 });
 
 // CHANGE SCENARIO
