@@ -68,6 +68,50 @@ function initDatabase() {
       UNIQUE(match_id)
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS tournaments (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      name_short TEXT,
+      status TEXT DEFAULT 'active',
+      last_synced DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS teams (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      tournament_id INTEGER,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS players (
+      id TEXT PRIMARY KEY,
+      nickname TEXT NOT NULL,
+      team_id TEXT,
+      tournament_id INTEGER,
+      last_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams(id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS player_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id TEXT,
+      series_id TEXT,
+      tournament_id INTEGER,
+      game_number INTEGER,
+      kills INTEGER,
+      deaths INTEGER,
+      assists INTEGER,
+      calculated_points REAL,
+      match_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(player_id, series_id, game_number),
+      FOREIGN KEY (player_id) REFERENCES players(id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    )`);
+
+    // Add tournament_id to leagues if it doesn't exist yet (migration)
+    db.run(`ALTER TABLE leagues ADD COLUMN tournament_id INTEGER`, () => {});
+
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {
         const passwordHash = bcrypt.hashSync('admin123', 10);

@@ -28,6 +28,41 @@
   margin-bottom: 0.25rem;
 }
 
+.tournament-panel {
+  grid-column: 1 / -1;
+}
+
+.tournament-matches-table {
+  overflow-x: auto;
+  margin-top: 0.5rem;
+}
+
+.tournament-matches-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tournament-matches-table th,
+.tournament-matches-table td {
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  white-space: nowrap;
+}
+
+.tournament-matches-table th {
+  opacity: 0.55;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tournament-matches-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 @media (max-width: 900px) {
   .admin-grid {
     grid-template-columns: 1fr;
