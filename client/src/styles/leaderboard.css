@@ -1,3 +1,12 @@
+.leaderboard-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.leaderboard {
+  min-height: 600px;
+}
+
 .leaderboard table {
   width: 100%;
   border-collapse: collapse;
@@ -7,7 +16,7 @@
 
 .leaderboard th,
 .leaderboard td {
-  padding: 0.45rem 0.4rem;
+  padding: 1rem 4rem;
   text-align: left;
 }
 
@@ -20,7 +29,7 @@
 }
 
 .leaderboard tbody tr:nth-child(odd) {
-  background: rgba(11, 1, 30, 0.9);
+  background: rgba(15, 3, 40, 0.8);
 }
 
 .highlight-row {

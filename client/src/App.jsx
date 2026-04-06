@@ -3,12 +3,15 @@ import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import MyFantasy from './pages/MyFantasy.jsx';
+import TournamentLeagues from './pages/TournamentLeagues.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import TeamBuilder from './pages/TeamBuilder.jsx';
 import MyTeam from './pages/MyTeam.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Profile from './pages/Profile.jsx';
+import { FlagImg } from './utils/flag.jsx';
 import './styles/app.css';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -16,15 +19,17 @@ const API_BASE = 'http://localhost:5000/api';
 export const AuthContext = React.createContext(null);
 
 function ProtectedRoute({ children, adminOnly = false }) {
-  const { user } = React.useContext(AuthContext);
+  const { user, loading } = React.useContext(AuthContext);
   const location = useLocation();
+
+  if (loading) return null;
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (adminOnly && user.role !== 'admin') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/my-fantasy" replace />;
   }
 
   return children;
@@ -32,6 +37,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem('cs2_fantasy_user');
@@ -42,6 +48,7 @@ function App() {
         localStorage.removeItem('cs2_fantasy_user');
       }
     }
+    setLoading(false);
   }, []);
 
   const handleLogout = () => {
@@ -51,23 +58,27 @@ function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, apiBase: API_BASE }}>
+    <AuthContext.Provider value={{ user, setUser, loading, apiBase: API_BASE }}>
       <div className="app-root">
         <header className="app-header">
           <Link to="/" className="logo">
             CS2 Fantasy
           </Link>
           <nav className="nav-links">
-            <Link to="/dashboard">Leagues</Link>
-            <Link to="/my-team">My Team</Link>
-            <Link to="/leaderboard">Leaderboard</Link>
-            {user && user.role === 'admin' && <Link to="/admin">Admin</Link>}
+            {user && (
+              <>
+                <Link to="/my-fantasy">My Fantasy</Link>
+                <Link to="/my-team">My Team</Link>
+                <Link to="/leaderboard">Leaderboard</Link>
+                {user.role === 'admin' && <Link to="/admin">Admin</Link>}
+              </>
+            )}
           </nav>
           <div className="auth-section">
             {user ? (
               <>
                 <Link to="/profile" className="user-pill">
-                  <span className="flag">{user.country_code ? String.fromCodePoint(...user.country_code.split('').map(c => 127397 + c.charCodeAt(0))) : '🌐'}</span>
+                  <FlagImg code={user.country_code} />
                   <span>{user.username}</span>
                 </Link>
                 <button className="btn-outlined" onClick={handleLogout}>
@@ -92,11 +103,20 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Navigate to="/my-fantasy" replace />} />
             <Route
-              path="/dashboard"
+              path="/my-fantasy"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <MyFantasy />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:tournamentId/leagues"
+              element={
+                <ProtectedRoute>
+                  <TournamentLeagues />
                 </ProtectedRoute>
               }
             />
@@ -148,4 +168,3 @@ function App() {
 }
 
 export default App;
-

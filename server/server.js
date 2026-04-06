@@ -13,6 +13,7 @@ const teamRoutes = require('./routes/teams');
 const playerRoutes = require('./routes/players');
 const fantasyTeamRoutes = require('./routes/fantasyTeams');
 const adminRoutes = require('./routes/admin');
+const tournamentRoutes = require('./routes/tournaments');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/players', playerRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/fantasy-teams', fantasyTeamRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/tournaments', tournamentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

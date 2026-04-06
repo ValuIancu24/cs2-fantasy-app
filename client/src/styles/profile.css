@@ -29,6 +29,81 @@
   color: #f7f4ff;
 }
 
+.country-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.country-select-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.country-select-trigger:hover {
+  border-color: rgba(210, 168, 255, 0.5);
+}
+
+.country-select-arrow {
+  opacity: 0.5;
+  font-size: 0.8rem;
+}
+
+.country-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(18, 4, 45, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.country-select-search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 0.85rem;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.country-select-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.country-select-option {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: rgba(240, 234, 255, 0.85);
+}
+
+.country-select-option:hover {
+  background: rgba(210, 168, 255, 0.1);
+}
+
+.country-select-option.active {
+  color: #d2a8ff;
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .profile-grid {
     grid-template-columns: 1fr;

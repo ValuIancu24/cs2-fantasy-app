@@ -1,12 +1,14 @@
 const fetch = require('node-fetch');
 
-const GRID_API_ENDPOINT = 'https://api-op.grid.gg/central-data/graphql';
+const GRID_CENTRAL_ENDPOINT = 'https://api-op.grid.gg/central-data/graphql';
+const GRID_SERIES_STATE_ENDPOINT = 'https://api-op.grid.gg/live-data-feed/series-state/graphql';
 const GRID_API_KEY = process.env.GRID_API_KEY || 'VhaPE8O7TdF0MQCRyUSnA5yJTMleFuzCv07LKFsG';
 
-async function executeGraphQL(query, variables = {}) {
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function executeGraphQL(endpoint, query, variables = {}) {
   try {
-    console.log('[GRID API] Executing query...');
-    const response = await fetch(GRID_API_ENDPOINT, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'x-api-key': GRID_API_KEY,
@@ -21,7 +23,7 @@ async function executeGraphQL(query, variables = {}) {
     }
 
     const data = await response.json();
-    
+
     if (data.errors) {
       console.error('[GRID API] GraphQL Errors:', JSON.stringify(data.errors, null, 2));
       throw new Error(`GraphQL Error: ${data.errors[0].message}`);
@@ -82,7 +84,7 @@ async function getTournamentMatches(tournamentId) {
   let after = null;
 
   do {
-    const data = await executeGraphQL(query, { tournamentId: String(tournamentId), after });
+    const data = await executeGraphQL(GRID_CENTRAL_ENDPOINT, query, { tournamentId: String(tournamentId), after });
 
     if (!data.allSeries || !data.allSeries.edges) {
       throw new Error('Invalid response from Grid API: allSeries not found');
@@ -112,6 +114,9 @@ async function getTeamRoster(teamId) {
             title {
               name
             }
+            roles {
+              name
+            }
           }
         }
       }
@@ -119,18 +124,24 @@ async function getTeamRoster(teamId) {
   `;
 
   console.log(`[GRID API] Fetching roster for team ${teamId}...`);
-  const data = await executeGraphQL(query, { teamId: String(teamId) });
-  
+  const data = await executeGraphQL(GRID_CENTRAL_ENDPOINT, query, { teamId: String(teamId) });
+
   if (!data.players || !data.players.edges) {
     throw new Error('Invalid response from Grid API: players not found');
   }
 
-  // Filter only CS2 players
-  const cs2Players = data.players.edges.filter(
-    edge => edge.node.title && edge.node.title.name === 'Counter Strike 2'
-  );
+  const cs2Players = data.players.edges.filter(edge => {
+    const node = edge.node;
+    // Must be CS2 player
+    if (!node.title || node.title.name !== 'Counter Strike 2') return false;
+    // Must have role "player" (excludes coaches, analysts, substitutes)
+    if (node.roles && node.roles.length > 0) {
+      return node.roles.some(r => r.name?.toLowerCase() === 'player');
+    }
+    return true; // if roles not available, keep player
+  });
 
-  console.log(`[GRID API] Found ${cs2Players.length} CS2 players`);
+  console.log(`[GRID API] Found ${cs2Players.length} CS2 active players`);
   return cs2Players;
 }
 
@@ -151,6 +162,7 @@ async function getMatchStats(seriesId) {
           teams {
             name
             players {
+              id
               name
               kills
               deaths
@@ -163,8 +175,8 @@ async function getMatchStats(seriesId) {
   `;
 
   console.log(`[GRID API] Fetching stats for series ${seriesId}...`);
-  const data = await executeGraphQL(query, { seriesId: String(seriesId) });
-  
+  const data = await executeGraphQL(GRID_SERIES_STATE_ENDPOINT, query, { seriesId: String(seriesId) });
+
   if (!data.seriesState) {
     throw new Error('Invalid response from Grid API: seriesState not found');
   }
@@ -176,5 +188,6 @@ async function getMatchStats(seriesId) {
 module.exports = {
   getTournamentMatches,
   getTeamRoster,
-  getMatchStats
+  getMatchStats,
+  sleep
 };

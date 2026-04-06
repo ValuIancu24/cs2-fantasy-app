@@ -1,219 +1,329 @@
 const db = require('../database');
 const gridApi = require('./gridApi');
+const { sleep } = gridApi;
 
-function calculatePoints(kills, deaths, assists) {
-  // Formula: K×2 + A×1 - D×1.5
-  return (kills * 2) + (assists * 1) - (deaths * 1.5);
+// Formula: 2×K + 1×A - 1×D applied to per-series totals
+function calculateSeriesPoints(kills, deaths, assists) {
+  return (kills * 2) + (assists * 1) - (deaths * 1);
 }
 
 async function syncTournament(tournamentId) {
   console.log(`[DATA ADAPTER] Syncing tournament ${tournamentId}...`);
-  
-  try {
-    const matchesData = await gridApi.getTournamentMatches(tournamentId);
-    
-    if (!matchesData.edges || matchesData.edges.length === 0) {
-      throw new Error('No matches found for this tournament');
-    }
 
-    const firstMatch = matchesData.edges[0].node;
-    const tournamentName = firstMatch.tournament.name;
-    const tournamentNameShort = firstMatch.tournament.nameShortened;
+  const matchesData = await gridApi.getTournamentMatches(tournamentId);
 
-    // Insert/Update tournament
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT OR REPLACE INTO tournaments (id, name, name_short, status, last_synced)
-         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [tournamentId, tournamentName, tournamentNameShort, 'active'],
-        (err) => (err ? reject(err) : resolve())
-      );
+  if (!matchesData.edges || matchesData.edges.length === 0) {
+    throw new Error('No matches found for this tournament');
+  }
+
+  const firstMatch = matchesData.edges[0].node;
+  const tournamentName = firstMatch.tournament.name;
+  const tournamentNameShort = firstMatch.tournament.nameShortened;
+
+  await dbRun(
+    `INSERT OR REPLACE INTO tournaments (id, name, name_short, status, last_synced)
+     VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)`,
+    [tournamentId, tournamentName, tournamentNameShort]
+  );
+  console.log(`[DATA ADAPTER] Tournament "${tournamentName}" saved`);
+
+  // Collect unique teams across all series
+  const teamsMap = new Map();
+  matchesData.edges.forEach(edge => {
+    edge.node.teams.forEach(team => {
+      if (team.baseInfo?.id && team.baseInfo?.name) {
+        teamsMap.set(team.baseInfo.id, team.baseInfo.name);
+      }
     });
+  });
 
-    console.log(`[DATA ADAPTER] Tournament "${tournamentName}" saved`);
+  for (const [teamId, teamName] of teamsMap.entries()) {
+    await dbRun(
+      `INSERT OR REPLACE INTO teams (id, name, tournament_id) VALUES (?, ?, ?)`,
+      [teamId, teamName, tournamentId]
+    );
+  }
+  console.log(`[DATA ADAPTER] ${teamsMap.size} teams saved`);
 
-    // Collect unique teams
-    const teamsMap = new Map();
-    matchesData.edges.forEach(edge => {
-      edge.node.teams.forEach(team => {
-        if (team.baseInfo && team.baseInfo.id && team.baseInfo.name) {
-          teamsMap.set(team.baseInfo.id, team.baseInfo.name);
-        }
-      });
-    });
+  // Fetch rosters for each team
+  let totalPlayers = await syncRosters(teamsMap, tournamentId);
 
-    console.log(`[DATA ADAPTER] Found ${teamsMap.size} unique teams`);
-
-    // Insert teams
-    for (const [teamId, teamName] of teamsMap.entries()) {
-      await new Promise((resolve, reject) => {
-        db.run(
-          `INSERT OR REPLACE INTO teams (id, name, tournament_id)
-           VALUES (?, ?, ?)`,
-          [teamId, teamName, tournamentId],
-          (err) => (err ? reject(err) : resolve())
-        );
-      });
-    }
-
-    // Fetch rosters for each team
-    let totalPlayers = 0;
-    for (const [teamId, teamName] of teamsMap.entries()) {
+  // Second pass: retry teams that ended up with 0 players
+  for (const [teamId, teamName] of teamsMap.entries()) {
+    const row = await dbGet(
+      'SELECT COUNT(*) as c FROM players WHERE team_id = ? AND tournament_id = ?',
+      [teamId, tournamentId]
+    );
+    if (row.c === 0) {
+      console.log(`[DATA ADAPTER] Retrying roster for ${teamName} (0 players after first pass)...`);
       try {
         const roster = await gridApi.getTeamRoster(teamId);
-        
         for (const edge of roster) {
           const player = edge.node;
-          await new Promise((resolve, reject) => {
-            db.run(
-              `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, last_synced)
-               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-              [player.id, player.nickname, teamId, tournamentId],
-              (err) => (err ? reject(err) : resolve())
-            );
-          });
+          await dbRun(
+            `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
+             VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+            [player.id, player.nickname, teamId, tournamentId]
+          );
           totalPlayers++;
         }
-        
-        console.log(`[DATA ADAPTER] ${teamName}: ${roster.length} players synced`);
-      } catch (error) {
-        console.error(`[DATA ADAPTER] Failed to sync roster for team ${teamId}:`, error.message);
+        console.log(`[DATA ADAPTER] ${teamName}: ${roster.length} players on retry`);
+      } catch (err) {
+        console.error(`[DATA ADAPTER] Retry failed for ${teamName}:`, err.message);
       }
     }
-
-    console.log(`[DATA ADAPTER] ✅ Sync complete: ${teamsMap.size} teams, ${totalPlayers} players, ${matchesData.totalCount} matches`);
-
-    return {
-      success: true,
-      tournament: { id: tournamentId, name: tournamentName },
-      teams: teamsMap.size,
-      players: totalPlayers,
-      matches: matchesData.totalCount
-    };
-  } catch (error) {
-    console.error('[DATA ADAPTER] Sync failed:', error.message);
-    throw error;
   }
+
+  console.log(`[DATA ADAPTER] ✅ Tournament sync complete: ${teamsMap.size} teams, ${totalPlayers} players`);
+  return {
+    success: true,
+    tournament: { id: tournamentId, name: tournamentName },
+    teams: teamsMap.size,
+    players: totalPlayers,
+    matches: matchesData.totalCount
+  };
 }
 
-async function syncMatchStats(seriesId, tournamentId) {
-  console.log(`[DATA ADAPTER] Syncing stats for series ${seriesId}...`);
-  
-  try {
-    const seriesState = await gridApi.getMatchStats(seriesId);
-    
-    if (!seriesState.finished) {
-      throw new Error('Match is not finished yet');
+async function syncRosters(teamsMap, tournamentId) {
+  let total = 0;
+  for (const [teamId, teamName] of teamsMap.entries()) {
+    try {
+      const roster = await gridApi.getTeamRoster(teamId);
+      for (const edge of roster) {
+        const player = edge.node;
+        await dbRun(
+          `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
+           VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+          [player.id, player.nickname, teamId, tournamentId]
+        );
+        total++;
+      }
+      console.log(`[DATA ADAPTER] ${teamName}: ${roster.length} players synced`);
+    } catch (err) {
+      console.error(`[DATA ADAPTER] Failed to sync roster for ${teamName}:`, err.message);
     }
+  }
+  return total;
+}
 
-    if (!seriesState.games || seriesState.games.length === 0) {
-      throw new Error('No game data available for this match');
-    }
+async function syncTournamentStats(tournamentId) {
+  console.log(`[DATA ADAPTER] Syncing stats for tournament ${tournamentId}...`);
 
-    let playersUpdated = 0;
+  const matchesData = await gridApi.getTournamentMatches(tournamentId);
+  if (!matchesData.edges || matchesData.edges.length === 0) {
+    throw new Error('No matches found for this tournament');
+  }
 
-    for (const game of seriesState.games) {
-      const gameNumber = game.sequenceNumber;
+  // Build series metadata + teamName→teamId map
+  const seriesInfoMap = new Map();
+  const teamNameToId = new Map();
 
-      for (const team of game.teams) {
-        for (const player of team.players) {
-          const playerName = player.name;
+  matchesData.edges.forEach(edge => {
+    const node = edge.node;
+    const teams = node.teams.map(t => t.baseInfo?.name).filter(Boolean);
+    seriesInfoMap.set(node.id, {
+      team1: teams[0] || null,
+      team2: teams[1] || null,
+      format: node.format?.nameShortened || null,
+      scheduledAt: node.startTimeScheduled || null
+    });
+    node.teams.forEach(t => {
+      if (t.baseInfo?.id && t.baseInfo?.name) {
+        teamNameToId.set(t.baseInfo.name.toLowerCase(), t.baseInfo.id);
+      }
+    });
+  });
 
-          // Find player ID in database by nickname
-          const dbPlayer = await new Promise((resolve, reject) => {
-            db.get(
-              'SELECT id FROM players WHERE nickname = ? AND tournament_id = ?',
-              [playerName, tournamentId],
-              (err, row) => (err ? reject(err) : resolve(row))
-            );
-          });
+  let seriesSynced = 0;
+  let seriesSkipped = 0;
+  let seriesFailed = 0;
+  const errors = [];
 
-          if (!dbPlayer) {
-            console.warn(`[DATA ADAPTER] Player "${playerName}" not found in database`);
-            continue;
+  for (const [seriesId, info] of seriesInfoMap.entries()) {
+    await dbRun(
+      `INSERT OR REPLACE INTO series_cache (id, tournament_id, team1_name, team2_name, format, scheduled_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [seriesId, tournamentId, info.team1, info.team2, info.format, info.scheduledAt]
+    );
+
+    try {
+      let seriesState;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          seriesState = await gridApi.getMatchStats(seriesId);
+          break;
+        } catch (e) {
+          if (e.message && e.message.includes('rate limit') && attempt < 3) {
+            const wait = attempt * 2000;
+            console.warn(`[DATA ADAPTER] Rate limit hit, waiting ${wait}ms before retry ${attempt}/3...`);
+            await sleep(wait);
+          } else {
+            throw e;
           }
-
-          const points = calculatePoints(player.kills, player.deaths, player.killAssistsGiven);
-
-          await new Promise((resolve, reject) => {
-            db.run(
-              `INSERT OR REPLACE INTO player_stats 
-               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, calculated_points, match_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-              [dbPlayer.id, seriesId, tournamentId, gameNumber, player.kills, player.deaths, player.killAssistsGiven, points],
-              (err) => (err ? reject(err) : resolve())
-            );
-          });
-
-          playersUpdated++;
         }
       }
+
+      if (!seriesState.finished) { seriesSkipped++; await sleep(500); continue; }
+      if (!seriesState.games || seriesState.games.length === 0) { seriesSkipped++; await sleep(500); continue; }
+
+      for (const game of seriesState.games) {
+        for (const team of game.teams) {
+          // Auto-fetch roster if team has no players in DB
+          const teamId = teamNameToId.get(team.name.toLowerCase());
+          if (teamId) {
+            const teamPlayerCount = await dbGet(
+              'SELECT COUNT(*) as c FROM players WHERE team_id = ? AND tournament_id = ?',
+              [teamId, tournamentId]
+            );
+            if (teamPlayerCount.c === 0) {
+              console.log(`[DATA ADAPTER] Auto-fetching roster for missing team "${team.name}"...`);
+              try {
+                const roster = await gridApi.getTeamRoster(teamId);
+                for (const edge of roster) {
+                  const p = edge.node;
+                  await dbRun(
+                    `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
+                     VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
+                    [p.id, p.nickname, teamId, tournamentId]
+                  );
+                }
+                console.log(`[DATA ADAPTER] Auto-fetched ${roster.length} players for "${team.name}"`);
+              } catch (e) {
+                console.error(`[DATA ADAPTER] Auto-fetch failed for "${team.name}":`, e.message);
+              }
+            }
+          }
+
+          for (const player of team.players) {
+            const dbPlayer = await findPlayer(player, tournamentId);
+            if (!dbPlayer) {
+              console.warn(`[DATA ADAPTER] Player "${player.name}" (id: ${player.id}) not found in DB (series ${seriesId})`);
+              continue;
+            }
+
+            await dbRun(
+              `INSERT OR REPLACE INTO player_stats
+               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, calculated_points, match_date)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`,
+              [dbPlayer.id, seriesId, tournamentId, game.sequenceNumber,
+               player.kills, player.deaths, player.killAssistsGiven]
+            );
+          }
+        }
+      }
+
+      seriesSynced++;
+      console.log(`[DATA ADAPTER] Series ${seriesId} synced (${seriesState.games.length} maps)`);
+    } catch (err) {
+      console.error(`[DATA ADAPTER] Failed to sync series ${seriesId}:`, err.message);
+      errors.push({ seriesId, error: err.message });
+      seriesFailed++;
     }
 
-    // Recalculate total points for all fantasy teams
-    await recalculateFantasyPoints(tournamentId);
-
-    console.log(`[DATA ADAPTER] ✅ Stats synced: ${playersUpdated} player performances recorded`);
-
-    return {
-      success: true,
-      playersUpdated,
-      gamesProcessed: seriesState.games.length
-    };
-  } catch (error) {
-    console.error('[DATA ADAPTER] Failed to sync match stats:', error.message);
-    throw error;
+    await sleep(500);
   }
+
+  await recalculateFantasyPoints(tournamentId);
+
+  console.log(`[DATA ADAPTER] ✅ Stats sync: ${seriesSynced} synced, ${seriesSkipped} not finished, ${seriesFailed} failed`);
+  return {
+    success: true,
+    seriesSynced,
+    seriesSkipped,
+    seriesFailed,
+    totalSeries: seriesInfoMap.size,
+    errors: errors.slice(0, 3)
+  };
+}
+
+// Find a player by: 1) Grid API ID, 2) case-insensitive nickname, 3) alias
+async function findPlayer(player, tournamentId) {
+  // 1. Match by Grid API player ID (stored during roster sync)
+  if (player.id) {
+    const byId = await dbGet(
+      'SELECT id FROM players WHERE id = ? AND tournament_id = ?',
+      [String(player.id), tournamentId]
+    );
+    if (byId) return byId;
+  }
+
+  // 2. Case-insensitive nickname match
+  const byNick = await dbGet(
+    'SELECT id FROM players WHERE LOWER(nickname) = LOWER(?) AND tournament_id = ?',
+    [player.name, tournamentId]
+  );
+  if (byNick) return byNick;
+
+  // 3. Alias match
+  const byAlias = await dbGet(
+    `SELECT p.id FROM players p
+     JOIN player_aliases pa ON pa.player_id = p.id
+     WHERE LOWER(pa.alias) = LOWER(?) AND p.tournament_id = ?`,
+    [player.name, tournamentId]
+  );
+  return byAlias || null;
 }
 
 async function recalculateFantasyPoints(tournamentId) {
   console.log(`[DATA ADAPTER] Recalculating fantasy points for tournament ${tournamentId}...`);
 
-  // Get all fantasy teams in leagues associated with this tournament
-  const teams = await new Promise((resolve, reject) => {
-    db.all(
-      `SELECT ft.id, ft.lineup, ft.league_id
-       FROM fantasy_teams ft
-       JOIN leagues l ON ft.league_id = l.id
-       WHERE l.tournament_id = ?`,
-      [tournamentId],
-      (err, rows) => (err ? reject(err) : resolve(rows || []))
-    );
-  });
+  const teams = await dbAll(
+    `SELECT ft.id, ft.lineup
+     FROM fantasy_teams ft
+     JOIN leagues l ON ft.league_id = l.id
+     WHERE l.tournament_id = ?`,
+    [tournamentId]
+  );
 
   for (const team of teams) {
-    const lineup = JSON.parse(team.lineup);
-    
-    // Calculate total points for this lineup
+    const lineup = JSON.parse(team.lineup || '[]');
     let totalPoints = 0;
+
     for (const playerId of lineup) {
-      const playerPoints = await new Promise((resolve, reject) => {
-        db.get(
-          `SELECT COALESCE(SUM(calculated_points), 0) as total
+      const row = await dbGet(
+        `SELECT COALESCE(SUM(series_pts), 0) as total FROM (
+           SELECT SUM(kills) * 2 + SUM(assists) - SUM(deaths) as series_pts
            FROM player_stats
-           WHERE player_id = ? AND tournament_id = ?`,
-          [playerId, tournamentId],
-          (err, row) => (err ? reject(err) : resolve(row?.total || 0))
-        );
-      });
-      totalPoints += playerPoints;
+           WHERE player_id = ? AND tournament_id = ?
+           GROUP BY series_id
+         )`,
+        [playerId, tournamentId]
+      );
+      totalPoints += row?.total || 0;
     }
 
-    // Update fantasy team
-    await new Promise((resolve, reject) => {
-      db.run(
-        'UPDATE fantasy_teams SET total_points = ?, rating_points = ?, team_points = 0 WHERE id = ?',
-        [totalPoints, totalPoints, team.id],
-        (err) => (err ? reject(err) : resolve())
-      );
-    });
+    await dbRun(
+      'UPDATE fantasy_teams SET total_points = ?, rating_points = ?, team_points = 0 WHERE id = ?',
+      [totalPoints, totalPoints, team.id]
+    );
   }
 
   console.log(`[DATA ADAPTER] ✅ Recalculated points for ${teams.length} fantasy teams`);
 }
 
+// ── SQLite promise helpers ───────────────────────────────────────────────────
+
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, err => (err ? reject(err) : resolve()));
+  });
+}
+
+function dbGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
+
+function dbAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows || [])));
+  });
+}
+
 module.exports = {
   syncTournament,
-  syncMatchStats,
-  calculatePoints
+  syncTournamentStats,
+  recalculateFantasyPoints,
+  calculateSeriesPoints
 };
