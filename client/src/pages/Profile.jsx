@@ -1,6 +1,64 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../App.jsx';
+import { getData } from 'country-list';
+import { FlagImg } from '../utils/flag.jsx';
 import '../styles/profile.css';
+
+const ALL_COUNTRIES = getData().sort((a, b) => a.name.localeCompare(b.name));
+
+function CountrySelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef(null);
+
+  const selected = ALL_COUNTRIES.find(c => c.code === value);
+  const filtered = search.trim()
+    ? ALL_COUNTRIES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    : ALL_COUNTRIES;
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (code) => { onChange(code); setOpen(false); setSearch(''); };
+
+  return (
+    <div className="country-select-wrapper" ref={ref}>
+      <button type="button" className="country-select-trigger" onClick={() => setOpen(o => !o)}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {selected ? <><FlagImg code={selected.code} /> {selected.name}</> : 'Select country'}
+        </span>
+        <span className="country-select-arrow">▾</span>
+      </button>
+      {open && (
+        <div className="country-select-dropdown">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="country-select-search"
+          />
+          <div className="country-select-list">
+            <div className="country-select-option" onClick={() => select('')}>— None —</div>
+            {filtered.map(c => (
+              <div
+                key={c.code}
+                className={`country-select-option ${c.code === value ? 'active' : ''}`}
+                onClick={() => select(c.code)}
+              >
+                <FlagImg code={c.code} style={{ marginRight: 6 }} /> {c.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Profile() {
   const { apiBase, user, setUser } = useContext(AuthContext);
@@ -107,14 +165,7 @@ function Profile() {
     }
   };
 
-  const countries = [
-    { code: 'RO', name: 'Romania' },
-    { code: 'US', name: 'United States' },
-    { code: 'GB', name: 'United Kingdom' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'BR', name: 'Brazil' }
-  ];
+  const countries = ALL_COUNTRIES;
 
   return (
     <div className="profile-grid">
@@ -143,17 +194,7 @@ function Profile() {
           </label>
           <label>
             Country
-            <select
-              value={countryCode}
-              onChange={e => setCountryCode(e.target.value)}
-            >
-              <option value="">Select country</option>
-              {countries.map(c => (
-                <option key={c.code} value={c.code}>
-                  {c.code} - {c.name}
-                </option>
-              ))}
-            </select>
+            <CountrySelect value={countryCode} onChange={setCountryCode} />
           </label>
           <button type="submit" className="btn-primary small">
             Save Profile
@@ -165,9 +206,7 @@ function Profile() {
         <h2>Profile Picture</h2>
         <div className="profile-picture-preview">
           {currentPic ? (
-            <div className="avatar">
-              {/* Actual image will be served from public/uploads/profiles */}
-            </div>
+            <img className="avatar" src={currentPic} alt="Profile" />
           ) : (
             <div className="avatar placeholder">?</div>
           )}

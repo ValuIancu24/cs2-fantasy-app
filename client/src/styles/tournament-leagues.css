@@ -1,0 +1,202 @@
+.tl-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.tl-header {
+  margin-bottom: 1.5rem;
+}
+
+.tl-back {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0;
+}
+
+.tl-back:hover {
+  opacity: 1;
+}
+
+.tl-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.tl-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* League list */
+.tl-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.tl-section-title:first-child {
+  margin-top: 0;
+}
+
+.tl-league-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tl-league-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--panel-bg, rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.tl-league-card:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.tl-league-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.tl-league-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-league-meta {
+  font-size: 0.78rem;
+}
+
+/* Create form */
+.tl-create-section {
+  position: sticky;
+  top: 1rem;
+}
+
+.tl-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.tl-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.tl-toggle {
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tl-toggle button {
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.tl-toggle button.active {
+  background: rgba(255,255,255,0.12);
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* Invite code display */
+.tl-invite-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 150, 0, 0.08);
+  border: 1px solid rgba(255, 150, 0, 0.25);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.tl-invite-code {
+  font-family: monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #ff9600;
+  flex: 1;
+}
+
+/* Modal */
+.tl-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.tl-modal {
+  background: var(--bg, #1a1a2e);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tl-modal h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tl-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 700px) {
+  .tl-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tl-create-section {
+    position: static;
+  }
+}

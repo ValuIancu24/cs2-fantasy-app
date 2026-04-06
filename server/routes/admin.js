@@ -1,233 +1,25 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const db = require('../database');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
-const scenarioConfig = require('../config/scenarios');
 const gridApi = require('../services/gridApi');
 const dataAdapter = require('../services/dataAdapter');
 
 const router = express.Router();
-const scenariosBasePath = path.join(__dirname, '..', '..', 'data', 'scenarios');
 
-function loadScenario(scenarioId) {
-  const filePath = path.join(scenariosBasePath, `scenario_${scenarioId}.json`);
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-}
+// ── STATS ────────────────────────────────────────────────────────────────────
 
-function getCurrentScenario() {
-  return loadScenario(scenarioConfig.activeScenario);
-}
-
-function ratingToPoints(rating) {
-  return Math.round((rating - 1) / 0.02);
-}
-
-function applyMatchToFantasyTeams(match, stageId, callback) {
-  db.all('SELECT * FROM fantasy_teams', [], (err, allTeams) => {
-    if (err) return callback(err);
-
-    let processed = 0;
-    if (allTeams.length === 0) return callback(null);
-
-    for (const team of allTeams) {
-      const lineup = JSON.parse(team.lineup || '[]').map(String);
-      const participatingStats = match.player_stats.filter(ps => lineup.includes(String(ps.player_id)));
-
-      if (participatingStats.length === 0) {
-        processed++;
-        if (processed === allTeams.length) callback(null);
-        continue;
-      }
-
-      let ratingPoints = 0;
-      for (const ps of participatingStats) {
-        ratingPoints += ratingToPoints(ps.rating);
-      }
-
-      let teamPoints = 0;
-      const winner = match.winner;
-      const teamsInMatch = new Set(match.player_stats.map(ps => ps.team));
-      const loser = [...teamsInMatch].find(t => t !== winner);
-
-      const hasWinnerPlayer = participatingStats.some(ps => ps.team === winner);
-      const hasLoserPlayer = participatingStats.some(ps => ps.team === loser);
-
-      if (hasWinnerPlayer) teamPoints += 5;
-      else if (hasLoserPlayer) teamPoints -= 5;
-
-      db.run(
-        `UPDATE fantasy_teams SET rating_points = rating_points + ?, team_points = team_points + ?, total_points = total_points + ? + ? WHERE id = ?`,
-        [ratingPoints, teamPoints, ratingPoints, teamPoints, team.id],
-        (err) => {
-          if (err) return callback(err);
-          processed++;
-          if (processed === allTeams.length) callback(null);
-        }
-      );
-    }
-  });
-}
-
-function simulateSingleMatch(match, stageId, callback) {
-  db.get('SELECT id FROM simulated_matches WHERE match_id = ?', [match.match_id], (err, existing) => {
-    if (err) return callback(err);
-    if (existing) return callback(null, { skipped: true, reason: 'already_simulated' });
-
-    db.run('INSERT INTO simulated_matches (match_id, stage_id) VALUES (?, ?)', [match.match_id, stageId], (err) => {
-      if (err) return callback(err);
-      applyMatchToFantasyTeams(match, stageId, (err) => {
-        if (err) return callback(err);
-        callback(null, { skipped: false });
-      });
-    });
-  });
-}
-
-function recalculateAllPointsFromSimulatedMatches(callback) {
-  db.run('UPDATE fantasy_teams SET rating_points = 0, team_points = 0, total_points = 0', [], (err) => {
-    if (err) return callback(err);
-
-    const scenario = getCurrentScenario();
-    const matchesById = {};
-
-    for (const m of scenario.quarter_finals || []) {
-      matchesById[m.match_id] = { ...m, stageId: 'quarter_finals' };
-    }
-    for (const m of scenario.semi_finals || []) {
-      matchesById[m.match_id] = { ...m, stageId: 'semi_finals' };
-    }
-    if (scenario.grand_final) {
-      matchesById[scenario.grand_final.match_id] = { ...scenario.grand_final, stageId: 'grand_final' };
-    }
-
-    db.all('SELECT * FROM simulated_matches ORDER BY id ASC', [], (err, simulated) => {
-      if (err) return callback(err);
-
-      let processed = 0;
-      if (simulated.length === 0) return callback(null);
-
-      for (const row of simulated) {
-        const m = matchesById[row.match_id];
-        if (m) {
-          applyMatchToFantasyTeams(m, m.stageId, (err) => {
-            if (err) return callback(err);
-            processed++;
-            if (processed === simulated.length) callback(null);
-          });
-        } else {
-          processed++;
-          if (processed === simulated.length) callback(null);
-        }
-      }
-    });
-  });
-}
-
-// SIMULATE SINGLE MATCH
-router.post('/simulate-match', authMiddleware, requireAdmin, (req, res) => {
-  const { matchId, stageId } = req.body;
-  if (!matchId || !stageId) {
-    return res.status(400).json({ message: 'matchId and stageId required' });
-  }
-
-  const scenario = getCurrentScenario();
-  let match = null;
-
-  if (stageId === 'quarter_finals') {
-    match = (scenario.quarter_finals || []).find(m => m.match_id === matchId);
-  } else if (stageId === 'semi_finals') {
-    match = (scenario.semi_finals || []).find(m => m.match_id === matchId);
-  } else if (stageId === 'grand_final') {
-    match = scenario.grand_final && scenario.grand_final.match_id === matchId ? scenario.grand_final : null;
-  }
-
-  if (!match) return res.status(404).json({ message: 'Match not found' });
-
-  simulateSingleMatch(match, stageId, (err, result) => {
-    if (err) return res.status(500).json({ message: 'Simulation failed' });
-    if (result.skipped) return res.status(400).json({ message: 'Already simulated' });
-    res.json({ message: 'Match simulated' });
-  });
-});
-
-// SIMULATE STAGE
-router.post('/simulate-stage', authMiddleware, requireAdmin, (req, res) => {
-  const { stageId } = req.body;
-  if (!stageId) return res.status(400).json({ message: 'stageId required' });
-
-  const scenario = getCurrentScenario();
-  let matches = [];
-
-  if (stageId === 'quarter_finals') matches = scenario.quarter_finals || [];
-  else if (stageId === 'semi_finals') matches = scenario.semi_finals || [];
-  else if (stageId === 'grand_final') matches = scenario.grand_final ? [scenario.grand_final] : [];
-  else return res.status(400).json({ message: 'Invalid stageId' });
-
-  let simulatedCount = 0;
-  let skippedCount = 0;
-  let processed = 0;
-
-  if (matches.length === 0) return res.json({ message: 'Stage completed', simulatedCount: 0, skippedCount: 0 });
-
-  for (const match of matches) {
-    simulateSingleMatch(match, stageId, (err, result) => {
-      if (err) return res.status(500).json({ message: 'Simulation failed' });
-      if (result.skipped) skippedCount++;
-      else simulatedCount++;
-      processed++;
-      if (processed === matches.length) {
-        res.json({ message: 'Stage completed', simulatedCount, skippedCount });
-      }
-    });
-  }
-});
-
-// RESET MATCHES
-router.post('/reset-match', authMiddleware, requireAdmin, (req, res) => {
-  const { type, matchId, stageId } = req.body;
-  if (!type) return res.status(400).json({ message: 'type required (match|stage|all)' });
-
-  let query = '';
-  let params = [];
-
-  if (type === 'match') {
-    if (!matchId) return res.status(400).json({ message: 'matchId required' });
-    query = 'DELETE FROM simulated_matches WHERE match_id = ?';
-    params = [matchId];
-  } else if (type === 'stage') {
-    if (!stageId) return res.status(400).json({ message: 'stageId required' });
-    query = 'DELETE FROM simulated_matches WHERE stage_id = ?';
-    params = [stageId];
-  } else if (type === 'all') {
-    query = 'DELETE FROM simulated_matches';
-  } else {
-    return res.status(400).json({ message: 'Invalid type' });
-  }
-
-  db.run(query, params, (err) => {
-    if (err) return res.status(500).json({ message: 'Reset failed' });
-    recalculateAllPointsFromSimulatedMatches((err) => {
-      if (err) return res.status(500).json({ message: 'Recalculation failed' });
-      res.json({ message: 'Reset completed' });
-    });
-  });
-});
-
-// ADMIN STATS
 router.get('/stats', authMiddleware, requireAdmin, (req, res) => {
   db.get('SELECT COUNT(*) as c FROM users', [], (e1, r1) => {
     db.get('SELECT COUNT(*) as c FROM leagues', [], (e2, r2) => {
       db.get('SELECT COUNT(*) as c FROM fantasy_teams', [], (e3, r3) => {
-        db.get('SELECT COUNT(*) as c FROM simulated_matches', [], (e4, r4) => {
-          db.get('SELECT MAX(simulated_at) as ts FROM simulated_matches', [], (e5, r5) => {
+        db.get('SELECT COUNT(*) as c FROM tournaments', [], (e4, r4) => {
+          db.get('SELECT COUNT(*) as c FROM players WHERE is_active = 1', [], (_e5, r5) => {
             res.json({
-              total_users: r1.c,
-              total_leagues: r2.c,
-              total_fantasy_teams: r3.c,
-              total_matches_simulated: r4.c,
-              last_simulation_timestamp: r5.ts,
-              active_scenario: scenarioConfig.activeScenario
+              total_users: r1?.c ?? 0,
+              total_leagues: r2?.c ?? 0,
+              total_fantasy_teams: r3?.c ?? 0,
+              total_tournaments: r4?.c ?? 0,
+              total_players: r5?.c ?? 0
             });
           });
         });
@@ -236,7 +28,8 @@ router.get('/stats', authMiddleware, requireAdmin, (req, res) => {
   });
 });
 
-// PREVIEW TOURNAMENT MATCHES (no DB write)
+// ── TOURNAMENT SYNC ──────────────────────────────────────────────────────────
+
 router.get('/tournament/:tournamentId/matches', authMiddleware, requireAdmin, async (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -249,7 +42,6 @@ router.get('/tournament/:tournamentId/matches', authMiddleware, requireAdmin, as
       return {
         id: node.id,
         teams,
-        title: node.title?.nameShortened || null,
         scheduledAt: node.startTimeScheduled || null,
         format: node.format?.nameShortened || null,
         tournament: node.tournament
@@ -259,12 +51,10 @@ router.get('/tournament/:tournamentId/matches', authMiddleware, requireAdmin, as
     });
     res.json({ totalCount: data.totalCount, matches });
   } catch (err) {
-    console.error('[ADMIN] Failed to fetch tournament matches:', err.message);
     res.status(500).json({ message: err.message || 'Failed to fetch matches from Grid API' });
   }
 });
 
-// SYNC TOURNAMENT TO DB (teams + players)
 router.post('/sync-tournament/:tournamentId', authMiddleware, requireAdmin, async (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -273,28 +63,117 @@ router.post('/sync-tournament/:tournamentId', authMiddleware, requireAdmin, asyn
     const result = await dataAdapter.syncTournament(tournamentId);
     res.json(result);
   } catch (err) {
-    console.error('[ADMIN] Sync tournament failed:', err.message);
     res.status(500).json({ message: err.message || 'Sync failed' });
   }
 });
 
-// CHANGE SCENARIO
-router.put('/scenario', authMiddleware, requireAdmin, (req, res) => {
-  const { scenarioId } = req.body;
-  const id = parseInt(scenarioId, 10);
-  if (![1, 2, 3, 4, 5].includes(id)) {
-    return res.status(400).json({ message: 'scenarioId must be 1-5' });
+router.post('/sync-stats/:tournamentId', authMiddleware, requireAdmin, async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  try {
+    const result = await dataAdapter.syncTournamentStats(tournamentId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Stats sync failed' });
   }
+});
 
-  const configPath = path.join(__dirname, '..', 'config', 'scenarios.js');
-  const content = `module.exports = {\n  activeScenario: ${id}\n};\n`;
-  fs.writeFileSync(configPath, content, 'utf-8');
+// ── PLAYER MANAGEMENT ────────────────────────────────────────────────────────
 
-  delete require.cache[require.resolve('../config/scenarios')];
-  const updated = require('../config/scenarios');
-  scenarioConfig.activeScenario = updated.activeScenario;
+// GET players for a tournament, grouped by team
+router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
 
-  res.json({ message: 'Scenario updated', activeScenario: updated.activeScenario });
+  db.all(
+    `SELECT p.id, p.nickname, p.is_active, p.team_id, t.name as team_name
+     FROM players p
+     LEFT JOIN teams t ON t.id = p.team_id
+     WHERE p.tournament_id = ?
+     ORDER BY t.name, p.nickname`,
+    [tournamentId],
+    (err, players) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+
+      // Group by team
+      const teamsMap = {};
+      (players || []).forEach(p => {
+        const key = p.team_name || 'Unknown';
+        if (!teamsMap[key]) teamsMap[key] = { team_name: key, team_id: p.team_id, players: [] };
+        teamsMap[key].players.push({ id: p.id, nickname: p.nickname, is_active: p.is_active });
+      });
+
+      res.json(Object.values(teamsMap));
+    }
+  );
+});
+
+// GET aliases for a player
+router.get('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, res) => {
+  db.all(
+    'SELECT id, alias FROM player_aliases WHERE player_id = ?',
+    [req.params.playerId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json(rows || []);
+    }
+  );
+});
+
+// TOGGLE player active status
+router.patch('/players/:playerId/active', authMiddleware, requireAdmin, (req, res) => {
+  const { is_active } = req.body;
+  db.run(
+    'UPDATE players SET is_active = ? WHERE id = ?',
+    [is_active ? 1 : 0, req.params.playerId],
+    (err) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json({ message: 'Updated' });
+    }
+  );
+});
+
+// ADD alias for a player
+router.post('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, res) => {
+  const { alias } = req.body;
+  if (!alias || !alias.trim()) return res.status(400).json({ message: 'Alias required' });
+
+  db.run(
+    'INSERT OR IGNORE INTO player_aliases (player_id, alias) VALUES (?, ?)',
+    [req.params.playerId, alias.trim().toLowerCase()],
+    function (err) {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json({ id: this.lastID, alias: alias.trim().toLowerCase() });
+    }
+  );
+});
+
+// DELETE alias
+router.delete('/player-aliases/:aliasId', authMiddleware, requireAdmin, (req, res) => {
+  db.run('DELETE FROM player_aliases WHERE id = ?', [req.params.aliasId], (err) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    res.json({ message: 'Deleted' });
+  });
+});
+
+// ── WIPE ─────────────────────────────────────────────────────────────────────
+
+router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) => {
+  db.serialize(() => {
+    db.run('DELETE FROM player_stats');
+    db.run('DELETE FROM player_aliases');
+    db.run('DELETE FROM series_cache');
+    db.run('DELETE FROM players');
+    db.run('DELETE FROM teams');
+    db.run('DELETE FROM tournaments');
+    db.run(
+      `UPDATE fantasy_teams SET lineup = '[]', total_points = 0, rating_points = 0, team_points = 0`,
+      (err) => {
+        if (err) return res.status(500).json({ message: 'Wipe failed' });
+        res.json({ message: 'All tournament data wiped. Fantasy team lineups reset.' });
+      }
+    );
+  });
 });
 
 module.exports = router;

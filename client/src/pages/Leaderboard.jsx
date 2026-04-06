@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../App.jsx';
+import { FlagImg } from '../utils/flag.jsx';
 import '../styles/leaderboard.css';
 
 function Leaderboard() {
@@ -40,12 +41,9 @@ function Leaderboard() {
     load();
   }, [leagueId, page, apiBase, token]);
 
-  const getFlag = code => {
-    if (!code) return '🌐';
-    return String.fromCodePoint(...code.split('').map(c => 127397 + c.charCodeAt(0)));
-  };
 
   return (
+    <div className="leaderboard-page">
     <div className="panel leaderboard">
       <h2>League Leaderboard</h2>
       <div className="leaderboard-controls">
@@ -78,7 +76,7 @@ function Leaderboard() {
                 <tr key={t.id} className={isUser ? 'highlight-row' : ''}>
                   <td>{rank}</td>
                   <td>
-                    <span className="flag">{getFlag(t.country_code)}</span> {t.username}
+                    <FlagImg code={t.country_code} style={{ marginRight: 6 }} /> {t.username}
                   </td>
                   <td>{t.team_name}</td>
                   <td>{t.total_points}</td>
@@ -116,6 +114,7 @@ function Leaderboard() {
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }

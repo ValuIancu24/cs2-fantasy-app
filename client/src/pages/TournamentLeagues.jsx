@@ -1,0 +1,319 @@
+import React, { useContext, useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App.jsx';
+import '../styles/tournament-leagues.css';
+
+function TournamentLeagues() {
+  const { tournamentId } = useParams();
+  const { apiBase } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const token = localStorage.getItem('cs2_fantasy_token');
+
+  const [leagues, setLeagues] = useState([]);
+  const [tournamentName, setTournamentName] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Create form state
+  const [createName, setCreateName] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createMessage, setCreateMessage] = useState('');
+  const [newInviteCode, setNewInviteCode] = useState('');
+
+  // Join modal state
+  const [joinModal, setJoinModal] = useState(null); // { leagueId, leagueName }
+  const [joinCode, setJoinCode] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+
+  const fetchLeagues = () => {
+    setLoading(true);
+    fetch(`${apiBase}/tournaments/${tournamentId}/leagues`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setLeagues(data);
+          if (data.length > 0) setTournamentName('');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+    // Also fetch tournament name
+    fetch(`${apiBase}/tournaments/active`)
+      .then(r => r.json())
+      .then(data => {
+        const t = data.find(t => String(t.id) === String(tournamentId));
+        if (t) setTournamentName(t.name);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchLeagues();
+  }, [tournamentId]);
+
+  const handleCreate = async e => {
+    e.preventDefault();
+    if (!createName.trim()) return;
+    setCreating(true);
+    setCreateMessage('');
+    setNewInviteCode('');
+
+    const res = await fetch(`${apiBase}/leagues`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: createName.trim(), tournamentId: parseInt(tournamentId), isPublic })
+    });
+    const data = await res.json();
+    setCreating(false);
+
+    if (!res.ok) {
+      setCreateMessage(data.message || 'Failed to create league');
+      return;
+    }
+
+    setCreateName('');
+    setIsPublic(true);
+    if (data.invite_code) {
+      setNewInviteCode(data.invite_code);
+      setCreateMessage('Private league created! Share the invite code below.');
+    } else {
+      setCreateMessage('League created successfully!');
+    }
+    fetchLeagues();
+  };
+
+  const handleJoinPublic = async leagueId => {
+    setJoining(true);
+    const res = await fetch(`${apiBase}/leagues/${leagueId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    setJoining(false);
+
+    if (!res.ok) {
+      alert(data.message || 'Failed to join');
+      return;
+    }
+    navigate(`/team-builder/${leagueId}`);
+  };
+
+  const handleJoinPrivate = async () => {
+    if (!joinModal) return;
+    setJoinError('');
+    if (joinCode.length !== 6) {
+      setJoinError('Invite code must be 6 characters');
+      return;
+    }
+    setJoining(true);
+    const res = await fetch(`${apiBase}/leagues/${joinModal.leagueId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ inviteCode: joinCode.toUpperCase() })
+    });
+    const data = await res.json();
+    setJoining(false);
+
+    if (!res.ok) {
+      setJoinError(data.message || 'Failed to join');
+      return;
+    }
+    setJoinModal(null);
+    setJoinCode('');
+    navigate(`/team-builder/${joinModal.leagueId}`);
+  };
+
+  const publicLeagues = leagues.filter(l => l.is_public === 1);
+  const privateLeagues = leagues.filter(l => l.is_public === 0);
+
+  return (
+    <div className="tl-page">
+      <div className="tl-header">
+        <button className="btn-text tl-back" onClick={() => navigate('/my-fantasy')}>
+          ← Back to Tournaments
+        </button>
+        <h1>{tournamentName || `Tournament #${tournamentId}`} — Leagues</h1>
+      </div>
+
+      <div className="tl-layout">
+        {/* LEFT: League list */}
+        <div className="tl-list-section">
+          {loading && <p className="muted">Loading leagues...</p>}
+
+          {!loading && leagues.length === 0 && (
+            <p className="muted">No leagues yet. Be the first to create one!</p>
+          )}
+
+          {publicLeagues.length > 0 && (
+            <>
+              <h2 className="tl-section-title">Public Leagues</h2>
+              <div className="tl-league-list">
+                {publicLeagues.map(l => (
+                  <div key={l.id} className="tl-league-card">
+                    <div className="tl-league-info">
+                      <span className="tl-league-name">{l.name}</span>
+                      <span className="muted tl-league-meta">
+                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · by {l.creator_name}
+                      </span>
+                    </div>
+                    {l.is_member ? (
+                      <button
+                        className="btn-outlined small"
+                        onClick={() => navigate(`/team-builder/${l.id}`)}
+                      >
+                        Edit Team
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-primary small"
+                        onClick={() => handleJoinPublic(l.id)}
+                        disabled={joining}
+                      >
+                        Join
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {privateLeagues.length > 0 && (
+            <>
+              <h2 className="tl-section-title">Private Leagues</h2>
+              <div className="tl-league-list">
+                {privateLeagues.map(l => (
+                  <div key={l.id} className="tl-league-card">
+                    <div className="tl-league-info">
+                      <span className="tl-league-name">{l.name}</span>
+                      <span className="muted tl-league-meta">
+                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · by {l.creator_name} · 🔒 Private
+                      </span>
+                    </div>
+                    {l.is_member ? (
+                      <button
+                        className="btn-outlined small"
+                        onClick={() => navigate(`/team-builder/${l.id}`)}
+                      >
+                        Edit Team
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-outlined small"
+                        onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}
+                      >
+                        Join with Code
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* RIGHT: Create league form */}
+        <div className="tl-create-section panel">
+          <h2>Create New League</h2>
+          <form onSubmit={handleCreate} className="tl-create-form">
+            <label>
+              League Name
+              <input
+                type="text"
+                value={createName}
+                onChange={e => setCreateName(e.target.value)}
+                placeholder="My League"
+                required
+              />
+            </label>
+
+            <div className="tl-toggle-row">
+              <span>Visibility</span>
+              <div className="tl-toggle">
+                <button
+                  type="button"
+                  className={isPublic ? 'active' : ''}
+                  onClick={() => setIsPublic(true)}
+                >
+                  Public
+                </button>
+                <button
+                  type="button"
+                  className={!isPublic ? 'active' : ''}
+                  onClick={() => setIsPublic(false)}
+                >
+                  Private
+                </button>
+              </div>
+            </div>
+
+            {!isPublic && (
+              <p className="muted" style={{ fontSize: '0.8rem', margin: '0' }}>
+                An invite code will be generated automatically.
+              </p>
+            )}
+
+            <button type="submit" className="btn-primary" disabled={creating}>
+              {creating ? 'Creating...' : 'Create League'}
+            </button>
+          </form>
+
+          {createMessage && (
+            <p className={`info-text ${createMessage.includes('Failed') ? 'error-text' : ''}`}>
+              {createMessage}
+            </p>
+          )}
+
+          {newInviteCode && (
+            <div className="tl-invite-box">
+              <span className="muted" style={{ fontSize: '0.8rem' }}>Invite Code</span>
+              <span className="tl-invite-code">{newInviteCode}</span>
+              <button
+                className="btn-text small"
+                onClick={() => navigator.clipboard.writeText(newInviteCode)}
+              >
+                Copy
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Join with code modal */}
+      {joinModal && (
+        <div className="tl-modal-backdrop" onClick={() => setJoinModal(null)}>
+          <div className="tl-modal" onClick={e => e.stopPropagation()}>
+            <h3>Join "{joinModal.leagueName}"</h3>
+            <label>
+              Invite Code
+              <input
+                type="text"
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                placeholder="XXXXXX"
+                autoFocus
+              />
+            </label>
+            {joinError && <p className="error-text">{joinError}</p>}
+            <div className="tl-modal-actions">
+              <button className="btn-outlined small" onClick={() => setJoinModal(null)}>
+                Cancel
+              </button>
+              <button className="btn-primary small" onClick={handleJoinPrivate} disabled={joining}>
+                {joining ? 'Joining...' : 'Join'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default TournamentLeagues;

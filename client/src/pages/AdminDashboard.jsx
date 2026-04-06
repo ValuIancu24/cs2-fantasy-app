@@ -10,17 +10,27 @@ function formatScheduledTime(isoString) {
 
 function AdminDashboard() {
   const { apiBase } = useContext(AuthContext);
-  const [stageId, setStageId] = useState('quarter_finals');
-  const [matchId, setMatchId] = useState('');
-  const [scenarioId, setScenarioId] = useState(1);
   const [stats, setStats] = useState(null);
-  const [message, setMessage] = useState('');
 
   const [tournamentId, setTournamentId] = useState('');
   const [tournamentMatches, setTournamentMatches] = useState(null);
   const [tournamentFetching, setTournamentFetching] = useState(false);
   const [tournamentSyncing, setTournamentSyncing] = useState(false);
+  const [statsSyncing, setStatsSyncing] = useState(false);
   const [tournamentMessage, setTournamentMessage] = useState('');
+
+  // Player management
+  const [manageTournamentId, setManageTournamentId] = useState('');
+  const [playerTeams, setPlayerTeams] = useState([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [playersMessage, setPlayersMessage] = useState('');
+  const [expandedPlayer, setExpandedPlayer] = useState(null);
+  const [playerAliases, setPlayerAliases] = useState({});
+  const [newAlias, setNewAlias] = useState({});
+
+  // Wipe
+  const [wiping, setWiping] = useState(false);
+  const [wipeMessage, setWipeMessage] = useState('');
 
   const token = localStorage.getItem('cs2_fantasy_token');
 
@@ -28,54 +38,12 @@ function AdminDashboard() {
     const res = await fetch(`${apiBase}/admin/stats`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (res.ok) {
-      const data = await res.json();
-      setStats(data);
-      setScenarioId(data.active_scenario || 1);
-    }
+    if (res.ok) setStats(await res.json());
   };
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  useEffect(() => { fetchStats(); }, []);
 
-  const callAdmin = async (path, body) => {
-    setMessage('');
-    const res = await fetch(`${apiBase}/admin/${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setMessage(data.message || 'Action failed');
-    } else {
-      setMessage(data.message || 'Action completed');
-      fetchStats();
-    }
-  };
-
-  const handleSimulateMatch = () => {
-    if (!matchId) {
-      setMessage('Enter match ID (e.g. qf1, sf2, gf)');
-      return;
-    }
-    callAdmin('simulate-match', { matchId, stageId });
-  };
-
-  const handleSimulateStage = () => {
-    callAdmin('simulate-stage', { stageId });
-  };
-
-  const handleReset = type => {
-    const body = { type };
-    if (type === 'match') body.matchId = matchId;
-    if (type === 'stage') body.stageId = stageId;
-    callAdmin('reset-match', body);
-  };
+  // ── Tournament Sync ───────────────────────────────────────────────────────
 
   const fetchTournamentMatches = async () => {
     if (!tournamentId.trim()) {
@@ -127,90 +95,166 @@ function AdminDashboard() {
     }
   };
 
-  const changeScenario = async () => {
-    setMessage('');
-    const res = await fetch(`${apiBase}/admin/scenario`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ scenarioId })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setMessage(data.message || 'Failed to update scenario');
-    } else {
-      setMessage(data.message || 'Scenario updated');
-      fetchStats();
+  const syncStats = async () => {
+    if (!tournamentId.trim()) return;
+    setStatsSyncing(true);
+    setTournamentMessage('');
+    try {
+      const res = await fetch(`${apiBase}/admin/sync-stats/${tournamentId.trim()}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTournamentMessage(data.message || 'Stats sync eșuat');
+      } else {
+        setTournamentMessage(
+          `✅ Stats sync: ${data.seriesSynced} serii sincronizate, ${data.seriesSkipped} neterminate, ${data.seriesFailed} erori (total: ${data.totalSeries})`
+        );
+        fetchStats();
+      }
+    } catch {
+      setTournamentMessage('Eroare de rețea');
+    } finally {
+      setStatsSyncing(false);
     }
+  };
+
+  // ── Wipe ──────────────────────────────────────────────────────────────────
+
+  const wipeTournamentData = async () => {
+    if (!window.confirm('Ești sigur? Aceasta va șterge TOATE datele de turneu (jucători, echipe, statistici, lineup-uri).')) return;
+    setWiping(true);
+    setWipeMessage('');
+    try {
+      const res = await fetch(`${apiBase}/admin/wipe-tournament-data`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setWipeMessage(data.message || 'Wipe eșuat');
+      } else {
+        setWipeMessage('✅ ' + data.message);
+        setPlayerTeams([]);
+        fetchStats();
+      }
+    } catch {
+      setWipeMessage('Eroare de rețea');
+    } finally {
+      setWiping(false);
+    }
+  };
+
+  // ── Player Management ─────────────────────────────────────────────────────
+
+  const loadPlayers = async () => {
+    if (!manageTournamentId.trim()) {
+      setPlayersMessage('Introdu un Tournament ID');
+      return;
+    }
+    setPlayersLoading(true);
+    setPlayersMessage('');
+    setPlayerTeams([]);
+    setExpandedPlayer(null);
+    setPlayerAliases({});
+    try {
+      const res = await fetch(`${apiBase}/admin/tournament/${manageTournamentId.trim()}/players`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPlayersMessage(data.message || 'Eroare');
+      } else if (data.length === 0) {
+        setPlayersMessage('Nu s-au găsit jucători pentru acest turneu.');
+      } else {
+        setPlayerTeams(data);
+      }
+    } catch {
+      setPlayersMessage('Eroare de rețea');
+    } finally {
+      setPlayersLoading(false);
+    }
+  };
+
+  const toggleActive = async (playerId, currentActive) => {
+    try {
+      const res = await fetch(`${apiBase}/admin/players/${playerId}/active`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: currentActive === 1 ? 0 : 1 })
+      });
+      if (res.ok) {
+        setPlayerTeams(prev => prev.map(team => ({
+          ...team,
+          players: team.players.map(p =>
+            p.id === playerId ? { ...p, is_active: currentActive === 1 ? 0 : 1 } : p
+          )
+        })));
+      }
+    } catch { /* silent */ }
+  };
+
+  const loadAliases = async (playerId) => {
+    if (playerAliases[playerId]) return; // already loaded
+    try {
+      const res = await fetch(`${apiBase}/admin/players/${playerId}/aliases`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlayerAliases(prev => ({ ...prev, [playerId]: data }));
+      }
+    } catch { /* silent */ }
+  };
+
+  const expandPlayer = (playerId) => {
+    if (expandedPlayer === playerId) {
+      setExpandedPlayer(null);
+    } else {
+      setExpandedPlayer(playerId);
+      loadAliases(playerId);
+    }
+  };
+
+  const addAlias = async (playerId) => {
+    const alias = (newAlias[playerId] || '').trim();
+    if (!alias) return;
+    try {
+      const res = await fetch(`${apiBase}/admin/players/${playerId}/aliases`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alias })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setPlayerAliases(prev => ({
+          ...prev,
+          [playerId]: [...(prev[playerId] || []), created]
+        }));
+        setNewAlias(prev => ({ ...prev, [playerId]: '' }));
+      }
+    } catch { /* silent */ }
+  };
+
+  const deleteAlias = async (playerId, aliasId) => {
+    try {
+      const res = await fetch(`${apiBase}/admin/player-aliases/${aliasId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setPlayerAliases(prev => ({
+          ...prev,
+          [playerId]: (prev[playerId] || []).filter(a => a.id !== aliasId)
+        }));
+      }
+    } catch { /* silent */ }
   };
 
   return (
     <div className="admin-grid">
-      <section className="panel">
-        <h2>Match Simulation</h2>
-        <label>
-          Active Scenario
-          <div className="scenario-row">
-            <select
-              value={scenarioId}
-              onChange={e => setScenarioId(Number(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5].map(id => (
-                <option key={id} value={id}>
-                  Scenario {id}
-                </option>
-              ))}
-            </select>
-            <button type="button" className="btn-outlined small" onClick={changeScenario}>
-              Set
-            </button>
-          </div>
-        </label>
-        <label>
-          Stage
-          <select value={stageId} onChange={e => setStageId(e.target.value)}>
-            <option value="quarter_finals">Quarter Finals</option>
-            <option value="semi_finals">Semi Finals</option>
-            <option value="grand_final">Grand Final</option>
-          </select>
-        </label>
-        <label>
-          Match ID
-          <input
-            type="text"
-            placeholder="qf1 / sf2 / gf"
-            value={matchId}
-            onChange={e => setMatchId(e.target.value)}
-          />
-        </label>
-        <div className="admin-buttons">
-          <button type="button" className="btn-primary small" onClick={handleSimulateMatch}>
-            Simulate Match
-          </button>
-          <button type="button" className="btn-outlined small" onClick={handleSimulateStage}>
-            Simulate Stage
-          </button>
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>Reset Options</h2>
-        <div className="admin-buttons">
-          <button type="button" className="btn-outlined small" onClick={() => handleReset('match')}>
-            Reset Last Match ID
-          </button>
-          <button type="button" className="btn-outlined small" onClick={() => handleReset('stage')}>
-            Reset Current Stage
-          </button>
-          <button type="button" className="btn-outlined small" onClick={() => handleReset('all')}>
-            Reset All Matches
-          </button>
-        </div>
-        {message && <p className="info-text">{message}</p>}
-      </section>
-
+      {/* ── Tournament Sync ── */}
       <section className="panel tournament-panel">
         <h2>Grid API — Tournament Sync</h2>
         <label>
@@ -239,7 +283,18 @@ function AdminDashboard() {
                 onClick={syncTournament}
                 disabled={tournamentSyncing}
               >
-                {tournamentSyncing ? 'Se sincronizează...' : 'Sync în DB'}
+                {tournamentSyncing ? 'Se sincronizează...' : 'Sync Turneu'}
+              </button>
+            )}
+            {tournamentId && (
+              <button
+                type="button"
+                className="btn-outlined small"
+                onClick={syncStats}
+                disabled={statsSyncing}
+                title="Sincronizează statisticile meciurilor terminate și recalculează punctele fantasy"
+              >
+                {statsSyncing ? 'Sync stats...' : 'Sync Stats'}
               </button>
             )}
           </div>
@@ -281,34 +336,138 @@ function AdminDashboard() {
         )}
       </section>
 
+      {/* ── Stats ── */}
       <section className="panel">
         <h2>Statistics</h2>
         {stats ? (
           <ul className="stats-list">
-            <li>
-              <strong>Total Users:</strong> {stats.total_users}
-            </li>
-            <li>
-              <strong>Total Leagues:</strong> {stats.total_leagues}
-            </li>
-            <li>
-              <strong>Total Fantasy Teams:</strong> {stats.total_fantasy_teams}
-            </li>
-            <li>
-              <strong>Total Matches Simulated:</strong> {stats.total_matches_simulated}
-            </li>
-            <li>
-              <strong>Last Simulation:</strong>{' '}
-              {stats.last_simulation_timestamp || 'Never'}
-            </li>
+            <li><strong>Total Users:</strong> {stats.total_users}</li>
+            <li><strong>Total Tournaments:</strong> {stats.total_tournaments}</li>
+            <li><strong>Total Players Synced:</strong> {stats.total_players}</li>
+            <li><strong>Total Leagues:</strong> {stats.total_leagues}</li>
+            <li><strong>Total Fantasy Teams:</strong> {stats.total_fantasy_teams}</li>
           </ul>
         ) : (
           <p className="muted">Loading stats...</p>
         )}
+      </section>
+
+      {/* ── Manage Players ── */}
+      <section className="panel manage-players-panel">
+        <h2>Manage Players</h2>
+        <div className="scenario-row" style={{ marginBottom: '0.75rem' }}>
+          <input
+            type="number"
+            placeholder="Tournament ID"
+            value={manageTournamentId}
+            onChange={e => setManageTournamentId(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && loadPlayers()}
+            style={{ width: '160px' }}
+          />
+          <button
+            type="button"
+            className="btn-outlined small"
+            onClick={loadPlayers}
+            disabled={playersLoading}
+          >
+            {playersLoading ? 'Se încarcă...' : 'Încarcă Jucători'}
+          </button>
+        </div>
+
+        {playersMessage && <p className="info-text">{playersMessage}</p>}
+
+        {playerTeams.map(team => (
+          <div key={team.team_name} className="player-team-block">
+            <div className="player-team-header">{team.team_name}</div>
+            {team.players.map(player => (
+              <div key={player.id} className="player-manage-row">
+                <div className="player-manage-main">
+                  <span
+                    className={`player-active-badge ${player.is_active ? 'active' : 'inactive'}`}
+                    title={player.is_active ? 'Activ' : 'Inactiv'}
+                  >
+                    {player.is_active ? '●' : '○'}
+                  </span>
+                  <span className="player-manage-name">{player.nickname}</span>
+                  <button
+                    type="button"
+                    className="btn-tiny"
+                    onClick={() => toggleActive(player.id, player.is_active)}
+                  >
+                    {player.is_active ? 'Dezactivează' : 'Activează'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-tiny btn-ghost"
+                    onClick={() => expandPlayer(player.id)}
+                  >
+                    {expandedPlayer === player.id ? 'Ascunde' : 'Alias-uri'}
+                  </button>
+                </div>
+
+                {expandedPlayer === player.id && (
+                  <div className="player-aliases-box">
+                    {(playerAliases[player.id] || []).length === 0 ? (
+                      <span className="muted" style={{ fontSize: '0.8rem' }}>Niciun alias</span>
+                    ) : (
+                      <div className="alias-list">
+                        {(playerAliases[player.id] || []).map(a => (
+                          <span key={a.id} className="alias-chip">
+                            {a.alias}
+                            <button
+                              type="button"
+                              className="alias-delete"
+                              onClick={() => deleteAlias(player.id, a.id)}
+                              title="Șterge alias"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="alias-add-row">
+                      <input
+                        type="text"
+                        placeholder="Adaugă alias..."
+                        value={newAlias[player.id] || ''}
+                        onChange={e => setNewAlias(prev => ({ ...prev, [player.id]: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && addAlias(player.id)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-tiny"
+                        onClick={() => addAlias(player.id)}
+                      >
+                        Adaugă
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </section>
+
+      {/* ── Danger Zone ── */}
+      <section className="panel danger-zone">
+        <h2>Danger Zone</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Șterge toate datele de turneu (jucători, echipe, statistici, serii) și resetează lineup-urile fantasy la zero.
+        </p>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={wipeTournamentData}
+          disabled={wiping}
+        >
+          {wiping ? 'Se șterge...' : 'Wipe Tournament Data'}
+        </button>
+        {wipeMessage && <p className="info-text" style={{ marginTop: '0.5rem' }}>{wipeMessage}</p>}
       </section>
     </div>
   );
 }
 
 export default AdminDashboard;
-

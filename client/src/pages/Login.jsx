@@ -29,8 +29,7 @@ function Login() {
       localStorage.setItem('cs2_fantasy_token', data.token);
       localStorage.setItem('cs2_fantasy_user', JSON.stringify(data.user));
       setUser(data.user);
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      navigate('/my-fantasy', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

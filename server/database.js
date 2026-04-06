@@ -109,8 +109,28 @@ function initDatabase() {
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
     )`);
 
-    // Add tournament_id to leagues if it doesn't exist yet (migration)
+    db.run(`CREATE TABLE IF NOT EXISTS series_cache (
+      id TEXT PRIMARY KEY,
+      tournament_id INTEGER,
+      team1_name TEXT,
+      team2_name TEXT,
+      format TEXT,
+      scheduled_at TEXT
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS player_aliases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id TEXT NOT NULL,
+      alias TEXT NOT NULL,
+      UNIQUE(player_id, alias),
+      FOREIGN KEY (player_id) REFERENCES players(id)
+    )`);
+
+    // Migrations — silently ignore if column already exists
     db.run(`ALTER TABLE leagues ADD COLUMN tournament_id INTEGER`, () => {});
+    db.run(`ALTER TABLE leagues ADD COLUMN is_public BOOLEAN DEFAULT 1`, () => {});
+    db.run(`ALTER TABLE leagues ADD COLUMN invite_code TEXT`, () => {});
+    db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
 
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {
