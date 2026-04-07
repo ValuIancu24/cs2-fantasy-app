@@ -77,9 +77,10 @@ function initDatabase() {
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS teams (
-      id TEXT PRIMARY KEY,
+      id TEXT NOT NULL,
       name TEXT NOT NULL,
-      tournament_id INTEGER,
+      tournament_id INTEGER NOT NULL,
+      PRIMARY KEY (id, tournament_id),
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
     )`);
 
@@ -89,7 +90,6 @@ function initDatabase() {
       team_id TEXT,
       tournament_id INTEGER,
       last_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (team_id) REFERENCES teams(id),
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
     )`);
 
@@ -131,6 +131,7 @@ function initDatabase() {
     db.run(`ALTER TABLE leagues ADD COLUMN is_public BOOLEAN DEFAULT 1`, () => {});
     db.run(`ALTER TABLE leagues ADD COLUMN invite_code TEXT`, () => {});
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
+    db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER DEFAULT 0`, () => {});
 
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {

@@ -1,10 +1,12 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
+
 import '../styles/myfantasy.css';
 
 function MyFantasy() {
-  const { apiBase } = useContext(AuthContext);
+  const { apiBase, user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -39,12 +41,14 @@ function MyFantasy() {
               {t.name_short && t.name_short !== t.name && (
                 <p className="tournament-card-short">{t.name_short}</p>
               )}
-              <p className="muted tournament-card-meta">
-                ID: {t.id}
-                {t.last_synced && (
-                  <> · Synced {new Date(t.last_synced).toLocaleDateString('ro-RO')}</>
-                )}
-              </p>
+              {isAdmin && (
+                <p className="muted tournament-card-meta">
+                  ID: {t.id}
+                  {t.last_synced && (
+                    <> · Synced {new Date(t.last_synced).toLocaleDateString('ro-RO')}</>
+                  )}
+                </p>
+              )}
             </div>
             <button
               className="btn-primary"

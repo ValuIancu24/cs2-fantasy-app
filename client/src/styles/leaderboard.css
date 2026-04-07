@@ -12,13 +12,36 @@
   border-collapse: collapse;
   margin-top: 0.75rem;
   font-size: 0.85rem;
+  table-layout: fixed;
 }
 
 .leaderboard th,
 .leaderboard td {
-  padding: 1rem 4rem;
+  padding: 0.75rem 1rem;
   text-align: left;
+  word-break: break-word;
 }
+
+.leaderboard th:nth-child(1),
+.leaderboard td:nth-child(1) { width: 8%; }
+
+.leaderboard th:nth-child(2),
+.leaderboard td:nth-child(2) { width: 27%; }
+
+.leaderboard th:nth-child(3),
+.leaderboard td:nth-child(3) { width: 27%; }
+
+.leaderboard th:nth-child(4),
+.leaderboard td:nth-child(4) { width: 13%; }
+
+.leaderboard th:nth-child(5),
+.leaderboard td:nth-child(5) { width: 13%; }
+
+.leaderboard th:nth-child(6),
+.leaderboard td:nth-child(6) { width: 12%; }
+
+.pts-positive { color: #60e6b8; }
+.pts-negative { color: #ff6b81; }
 
 .leaderboard thead {
   background: rgba(30, 5, 70, 0.95);
@@ -48,5 +71,24 @@
   justify-content: space-between;
   margin-top: 0.75rem;
   font-size: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rank-cell {
+  font-weight: 700;
+  min-width: 40px;
 }
 

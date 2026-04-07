@@ -166,8 +166,12 @@ async function syncTournamentStats(tournamentId) {
       if (!seriesState.finished) { seriesSkipped++; await sleep(500); continue; }
       if (!seriesState.games || seriesState.games.length === 0) { seriesSkipped++; await sleep(500); continue; }
 
+      // Determine which team won this series
+      const winningTeamName = (seriesState.teams || []).find(t => t.won)?.name?.toLowerCase() || null;
+
       for (const game of seriesState.games) {
         for (const team of game.teams) {
+          const teamWon = winningTeamName && team.name.toLowerCase() === winningTeamName ? 1 : 0;
           // Auto-fetch roster if team has no players in DB
           const teamId = teamNameToId.get(team.name.toLowerCase());
           if (teamId) {
@@ -203,10 +207,10 @@ async function syncTournamentStats(tournamentId) {
 
             await dbRun(
               `INSERT OR REPLACE INTO player_stats
-               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, calculated_points, match_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`,
+               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, calculated_points, team_win, match_date)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)`,
               [dbPlayer.id, seriesId, tournamentId, game.sequenceNumber,
-               player.kills, player.deaths, player.killAssistsGiven]
+               player.kills, player.deaths, player.killAssistsGiven, teamWon]
             );
           }
         }
@@ -277,10 +281,11 @@ async function recalculateFantasyPoints(tournamentId) {
 
   for (const team of teams) {
     const lineup = JSON.parse(team.lineup || '[]');
-    let totalPoints = 0;
+    let totalRating = 0;
+    let totalTeam = 0;
 
     for (const playerId of lineup) {
-      const row = await dbGet(
+      const kdaRow = await dbGet(
         `SELECT COALESCE(SUM(series_pts), 0) as total FROM (
            SELECT SUM(kills) * 2 + SUM(assists) - SUM(deaths) as series_pts
            FROM player_stats
@@ -289,12 +294,22 @@ async function recalculateFantasyPoints(tournamentId) {
          )`,
         [playerId, tournamentId]
       );
-      totalPoints += row?.total || 0;
+      totalRating += kdaRow?.total || 0;
+
+      const teamRow = await dbGet(
+        `SELECT
+           COUNT(DISTINCT CASE WHEN team_win = 1 THEN series_id END) as wins,
+           COUNT(DISTINCT CASE WHEN team_win = 0 THEN series_id END) as losses
+         FROM player_stats
+         WHERE player_id = ? AND tournament_id = ?`,
+        [playerId, tournamentId]
+      );
+      totalTeam += ((teamRow?.wins || 0) * 15) - ((teamRow?.losses || 0) * 15);
     }
 
     await dbRun(
-      'UPDATE fantasy_teams SET total_points = ?, rating_points = ?, team_points = 0 WHERE id = ?',
-      [totalPoints, totalPoints, team.id]
+      'UPDATE fantasy_teams SET rating_points = ?, team_points = ?, total_points = ? WHERE id = ?',
+      [totalRating, totalTeam, totalRating + totalTeam, team.id]
     );
   }
 

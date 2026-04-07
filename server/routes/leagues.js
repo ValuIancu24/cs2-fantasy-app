@@ -24,6 +24,9 @@ router.post('/', authMiddleware, (req, res) => {
   if (!name || !name.trim()) {
     return res.status(400).json({ message: 'League name is required' });
   }
+  if (name.trim().length > 40) {
+    return res.status(400).json({ message: 'League name cannot exceed 40 characters' });
+  }
   if (!tournamentId) {
     return res.status(400).json({ message: 'tournamentId is required' });
   }
@@ -31,6 +34,16 @@ router.post('/', authMiddleware, (req, res) => {
   const isPublicVal = isPublic === false ? 0 : 1;
   const inviteCode = isPublicVal === 0 ? generateInviteCode() : null;
 
+  db.get(
+    'SELECT id FROM leagues WHERE LOWER(name) = LOWER(?) AND tournament_id = ?',
+    [name.trim(), tournamentId],
+    (err, existing) => {
+      if (existing) return res.status(400).json({ message: 'A league with this name already exists for this tournament' });
+      insertLeague();
+    }
+  );
+
+  function insertLeague() {
   db.run(
     `INSERT INTO leagues (name, creator_id, status, tournament_id, is_public, invite_code, join_code)
      VALUES (?, ?, 'active', ?, ?, ?, ?)`,
@@ -50,6 +63,7 @@ router.post('/', authMiddleware, (req, res) => {
       });
     }
   );
+  } // end insertLeague
 });
 
 // GET LEAGUES (all for admin, own for users)
@@ -148,6 +162,47 @@ router.get('/:id/members', authMiddleware, (req, res) => {
         res.json({ league, members: members || [] });
       }
     );
+  });
+});
+
+// ADMIN: Rename league
+router.patch('/:id/name', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+  const leagueId = parseInt(req.params.id, 10);
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ message: 'Name required' });
+
+  db.get('SELECT tournament_id FROM leagues WHERE id = ?', [leagueId], (err, league) => {
+    if (!league) return res.status(404).json({ message: 'League not found' });
+
+    db.get(
+      'SELECT id FROM leagues WHERE LOWER(name) = LOWER(?) AND tournament_id = ? AND id != ?',
+      [name.trim(), league.tournament_id, leagueId],
+      (err, existing) => {
+        if (existing) return res.status(400).json({ message: 'Name already taken in this tournament' });
+        db.run('UPDATE leagues SET name = ? WHERE id = ?', [name.trim(), leagueId], (err) => {
+          if (err) return res.status(500).json({ message: 'Failed to rename' });
+          res.json({ message: 'League renamed' });
+        });
+      }
+    );
+  });
+});
+
+// ADMIN: Delete league
+router.delete('/:id', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
+  const leagueId = parseInt(req.params.id, 10);
+
+  db.run('DELETE FROM fantasy_teams WHERE league_id = ?', [leagueId], (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to delete teams' });
+    db.run('DELETE FROM league_members WHERE league_id = ?', [leagueId], (err) => {
+      if (err) return res.status(500).json({ message: 'Failed to delete members' });
+      db.run('DELETE FROM leagues WHERE id = ?', [leagueId], (err) => {
+        if (err) return res.status(500).json({ message: 'Failed to delete league' });
+        res.json({ message: 'League deleted' });
+      });
+    });
   });
 });
 

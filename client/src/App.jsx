@@ -4,6 +4,7 @@ import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import MyFantasy from './pages/MyFantasy.jsx';
+import LeaguesRedirect from './pages/LeaguesRedirect.jsx';
 import TournamentLeagues from './pages/TournamentLeagues.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import TeamBuilder from './pages/TeamBuilder.jsx';
@@ -55,19 +56,22 @@ function App() {
     localStorage.removeItem('cs2_fantasy_token');
     localStorage.removeItem('cs2_fantasy_user');
     setUser(null);
+    window.location.href = '/';
   };
 
   return (
     <AuthContext.Provider value={{ user, setUser, loading, apiBase: API_BASE }}>
       <div className="app-root">
         <header className="app-header">
-          <Link to="/" className="logo">
-            CS2 Fantasy
-          </Link>
+          {user
+            ? <span className="logo">CS2 Fantasy</span>
+            : <Link to="/" className="logo">CS2 Fantasy</Link>
+          }
           <nav className="nav-links">
             {user && (
               <>
                 <Link to="/my-fantasy">My Fantasy</Link>
+                <Link to="/leagues">Leagues</Link>
                 <Link to="/my-team">My Team</Link>
                 <Link to="/leaderboard">Leaderboard</Link>
                 {user.role === 'admin' && <Link to="/admin">Admin</Link>}
@@ -78,6 +82,10 @@ function App() {
             {user ? (
               <>
                 <Link to="/profile" className="user-pill">
+                  {user.profile_picture
+                    ? <img src={user.profile_picture} alt="avatar" className="user-pill-avatar" />
+                    : <div className="user-pill-avatar user-pill-avatar-placeholder">{user.username[0].toUpperCase()}</div>
+                  }
                   <FlagImg code={user.country_code} />
                   <span>{user.username}</span>
                 </Link>
@@ -100,10 +108,11 @@ function App() {
 
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Home />} />
+            <Route path="/login" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Login />} />
+            <Route path="/register" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Register />} />
             <Route path="/dashboard" element={<Navigate to="/my-fantasy" replace />} />
+            <Route path="/leagues" element={<ProtectedRoute><LeaguesRedirect /></ProtectedRoute>} />
             <Route
               path="/my-fantasy"
               element={
