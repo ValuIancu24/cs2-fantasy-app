@@ -140,9 +140,14 @@ function TeamBuilder() {
             type="text"
             value={teamName}
             onChange={e => setTeamName(e.target.value)}
-            placeholder="My Super Team"
+            placeholder="ex: Furienii"
+            maxLength={30}
+            required
           />
         </label>
+        <p className="muted" style={{ fontSize: '0.78rem', marginTop: '-0.25rem' }}>
+          Numele trebuie să fie unic în această ligă.
+        </p>
 
         <p className="muted">Pick exactly 5 players · Max 2 per real team</p>
 

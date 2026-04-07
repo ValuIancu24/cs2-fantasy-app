@@ -38,6 +38,12 @@ button {
   z-index: 10;
 }
 
+.app-header .nav-links {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .logo {
   font-weight: 700;
   color: #ffffff;
@@ -76,6 +82,24 @@ button {
 
 .flag {
   font-size: 1.1rem;
+}
+
+.user-pill-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-pill-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(210, 168, 255, 0.25);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #d2a8ff;
 }
 
 .btn-primary,

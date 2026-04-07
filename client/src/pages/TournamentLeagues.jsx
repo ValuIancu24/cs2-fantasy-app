@@ -5,7 +5,8 @@ import '../styles/tournament-leagues.css';
 
 function TournamentLeagues() {
   const { tournamentId } = useParams();
-  const { apiBase } = useContext(AuthContext);
+  const { apiBase, user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const token = localStorage.getItem('cs2_fantasy_token');
 
@@ -21,10 +22,14 @@ function TournamentLeagues() {
   const [newInviteCode, setNewInviteCode] = useState('');
 
   // Join modal state
-  const [joinModal, setJoinModal] = useState(null); // { leagueId, leagueName }
+  const [joinModal, setJoinModal] = useState(null);
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
+
+  // Admin edit state
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
 
   const fetchLeagues = () => {
     setLoading(true);
@@ -128,6 +133,27 @@ function TournamentLeagues() {
     navigate(`/team-builder/${joinModal.leagueId}`);
   };
 
+  const handleRename = async (leagueId) => {
+    if (!editName.trim()) return;
+    const res = await fetch(`${apiBase}/leagues/${leagueId}/name`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name: editName.trim() })
+    });
+    if (res.ok) { setEditingId(null); fetchLeagues(); }
+    else { const d = await res.json(); alert(d.message || 'Failed to rename'); }
+  };
+
+  const handleDelete = async (leagueId, leagueName) => {
+    if (!window.confirm(`Ștergi liga "${leagueName}"? Toate echipele din ea vor fi șterse.`)) return;
+    const res = await fetch(`${apiBase}/leagues/${leagueId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) fetchLeagues();
+    else { const d = await res.json(); alert(d.message || 'Failed to delete'); }
+  };
+
   const publicLeagues = leagues.filter(l => l.is_public === 1);
   const privateLeagues = leagues.filter(l => l.is_public === 0);
 
@@ -156,27 +182,32 @@ function TournamentLeagues() {
                 {publicLeagues.map(l => (
                   <div key={l.id} className="tl-league-card">
                     <div className="tl-league-info">
-                      <span className="tl-league-name">{l.name}</span>
+                      {editingId === l.id ? (
+                        <div className="tl-edit-row">
+                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} autoFocus />
+                          <button className="btn-tiny" onClick={() => handleRename(l.id)}>Save</button>
+                          <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <span className="tl-league-name">{l.name}</span>
+                      )}
                       <span className="muted tl-league-meta">
-                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · by {l.creator_name}
+                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · created by {l.creator_name}
                       </span>
                     </div>
-                    {l.is_member ? (
-                      <button
-                        className="btn-outlined small"
-                        onClick={() => navigate(`/team-builder/${l.id}`)}
-                      >
-                        Edit Team
-                      </button>
-                    ) : (
-                      <button
-                        className="btn-primary small"
-                        onClick={() => handleJoinPublic(l.id)}
-                        disabled={joining}
-                      >
-                        Join
-                      </button>
-                    )}
+                    <div className="tl-card-actions">
+                      {isAdmin && (
+                        <>
+                          <button className="btn-tiny btn-ghost" onClick={() => { setEditingId(l.id); setEditName(l.name); }}>Edit</button>
+                          <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
+                        </>
+                      )}
+                      {l.is_member ? (
+                        <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>
+                      ) : (
+                        <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -190,26 +221,32 @@ function TournamentLeagues() {
                 {privateLeagues.map(l => (
                   <div key={l.id} className="tl-league-card">
                     <div className="tl-league-info">
-                      <span className="tl-league-name">{l.name}</span>
+                      {editingId === l.id ? (
+                        <div className="tl-edit-row">
+                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} autoFocus />
+                          <button className="btn-tiny" onClick={() => handleRename(l.id)}>Save</button>
+                          <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <span className="tl-league-name">{l.name}</span>
+                      )}
                       <span className="muted tl-league-meta">
-                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · by {l.creator_name} · 🔒 Private
+                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · created by {l.creator_name} · 🔒 Private
                       </span>
                     </div>
-                    {l.is_member ? (
-                      <button
-                        className="btn-outlined small"
-                        onClick={() => navigate(`/team-builder/${l.id}`)}
-                      >
-                        Edit Team
-                      </button>
-                    ) : (
-                      <button
-                        className="btn-outlined small"
-                        onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}
-                      >
-                        Join with Code
-                      </button>
-                    )}
+                    <div className="tl-card-actions">
+                      {isAdmin && (
+                        <>
+                          <button className="btn-tiny btn-ghost" onClick={() => { setEditingId(l.id); setEditName(l.name); }}>Edit</button>
+                          <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
+                        </>
+                      )}
+                      {l.is_member ? (
+                        <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>
+                      ) : (
+                        <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -228,6 +265,7 @@ function TournamentLeagues() {
                 value={createName}
                 onChange={e => setCreateName(e.target.value)}
                 placeholder="My League"
+                maxLength={40}
                 required
               />
             </label>
@@ -264,7 +302,7 @@ function TournamentLeagues() {
           </form>
 
           {createMessage && (
-            <p className={`info-text ${createMessage.includes('Failed') ? 'error-text' : ''}`}>
+            <p className={createMessage.includes('successfully') || createMessage.includes('created') ? 'success-text' : 'error-text'}>
               {createMessage}
             </p>
           )}

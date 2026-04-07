@@ -1,3 +1,19 @@
+.myteam-empty {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 3rem 2.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.myteam-empty p {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
 .myteam-page {
   max-width: 1100px;
   margin: 0 auto;
@@ -180,6 +196,9 @@
 
 .myteam-series-pts.positive { color: #b5f5a0; }
 .myteam-series-pts.negative { color: #ff6b81; }
+
+.positive { color: #b5f5a0; }
+.negative { color: #ff6b81; }
 
 .myteam-breakdown-total {
   display: flex;

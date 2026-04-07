@@ -4,12 +4,13 @@ const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Calculate and persist total_points for a fantasy team
+// Calculate and persist total_points, rating_points, team_points for a fantasy team
 function recalcTeamPoints(teamId, lineup, tournamentId, cb) {
   if (!lineup || lineup.length === 0) return cb(null, 0);
 
   let remaining = lineup.length;
-  let total = 0;
+  let totalRating = 0;
+  let totalTeam = 0;
 
   lineup.forEach(playerId => {
     db.get(
@@ -20,16 +21,28 @@ function recalcTeamPoints(teamId, lineup, tournamentId, cb) {
          GROUP BY series_id
        )`,
       [playerId, tournamentId],
-      (_err, row) => {
-        total += row?.pts || 0;
-        remaining--;
-        if (remaining === 0) {
-          db.run(
-            'UPDATE fantasy_teams SET total_points = ?, rating_points = ?, team_points = 0 WHERE id = ?',
-            [total, total, teamId],
-            () => cb(null, total)
-          );
-        }
+      (_err, kdaRow) => {
+        totalRating += kdaRow?.pts || 0;
+        db.get(
+          `SELECT
+             COUNT(DISTINCT CASE WHEN team_win = 1 THEN series_id END) as wins,
+             COUNT(DISTINCT CASE WHEN team_win = 0 THEN series_id END) as losses
+           FROM player_stats
+           WHERE player_id = ? AND tournament_id = ?`,
+          [playerId, tournamentId],
+          (_err2, teamRow) => {
+            totalTeam += ((teamRow?.wins || 0) * 15) - ((teamRow?.losses || 0) * 15);
+            remaining--;
+            if (remaining === 0) {
+              const total = totalRating + totalTeam;
+              db.run(
+                'UPDATE fantasy_teams SET rating_points = ?, team_points = ?, total_points = ? WHERE id = ?',
+                [totalRating, totalTeam, total, teamId],
+                () => cb(null, total)
+              );
+            }
+          }
+        );
       }
     );
   });
@@ -52,6 +65,9 @@ router.post('/', authMiddleware, (req, res) => {
 
   if (!leagueId || !teamName || !Array.isArray(lineup)) {
     return res.status(400).json({ message: 'leagueId, teamName and lineup required' });
+  }
+  if (teamName.trim().length > 30) {
+    return res.status(400).json({ message: 'Team name cannot exceed 30 characters' });
   }
 
   const validationError = validateLineup(lineup);
@@ -105,7 +121,7 @@ router.get('/:leagueId', authMiddleware, (req, res) => {
       db.all(
         `SELECT p.id, p.nickname, p.team_id, t.name AS team_name
          FROM players p
-         LEFT JOIN teams t ON t.id = p.team_id
+         LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
          WHERE p.id IN (${placeholders})`,
         lineup,
         (err, players) => {
@@ -137,7 +153,7 @@ router.put('/:id', authMiddleware, (req, res) => {
       (err) => {
         if (err) {
           if (err.code === 'SQLITE_CONSTRAINT') {
-            return res.status(400).json({ message: 'Team name taken' });
+            return res.status(400).json({ message: 'This team name is already taken in this league. Choose a different name.' });
           }
           return res.status(500).json({ message: 'Update failed' });
         }
@@ -181,7 +197,7 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
       db.all(
         `SELECT p.id, p.nickname, t.name AS team_name
          FROM players p
-         LEFT JOIN teams t ON t.id = p.team_id
+         LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
          WHERE p.id IN (${placeholders})`,
         lineup,
         (err, players) => {
@@ -205,7 +221,8 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                  SUM(ps.kills)   AS kills,
                  SUM(ps.deaths)  AS deaths,
                  SUM(ps.assists) AS assists,
-                 SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS series_points
+                 SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS series_points,
+                 MAX(ps.team_win) AS team_win
                FROM player_stats ps
                LEFT JOIN series_cache sc ON sc.id = ps.series_id
                WHERE ps.player_id = ? AND ps.tournament_id = ?
@@ -213,13 +230,19 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                ORDER BY sc.scheduled_at ASC`,
               [playerId, tournamentId],
               (err, seriesRows) => {
-                const series = err ? [] : (seriesRows || []);
-                const totalPoints = series.reduce((sum, s) => sum + (s.series_points || 0), 0);
+                const series = (err ? [] : (seriesRows || [])).map(s => ({
+                  ...s,
+                  team_points: s.team_win === 1 ? 15 : -15
+                }));
+                const kdaPoints = series.reduce((sum, s) => sum + (s.series_points || 0), 0);
+                const teamPoints = series.reduce((sum, s) => sum + s.team_points, 0);
                 const playerInfo = playerMap[String(playerId)] || { id: playerId, nickname: playerId, team_name: null };
 
                 results.push({
                   ...playerInfo,
-                  total_points: totalPoints,
+                  rating_points: kdaPoints,
+                  team_points: teamPoints,
+                  total_points: kdaPoints + teamPoints,
                   series
                 });
 
@@ -227,10 +250,13 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                 if (remaining === 0) {
                   // Re-order results to match lineup order
                   const ordered = lineup.map(id => results.find(r => String(r.id) === String(id))).filter(Boolean);
-                  const teamTotal = ordered.reduce((sum, p) => sum + p.total_points, 0);
+                  const totalRating = ordered.reduce((sum, p) => sum + p.rating_points, 0);
+                  const totalTeam = ordered.reduce((sum, p) => sum + p.team_points, 0);
                   res.json({
                     team_name: team.team_name,
-                    total_points: teamTotal,
+                    rating_points: totalRating,
+                    team_points: totalTeam,
+                    total_points: totalRating + totalTeam,
                     lineup: ordered
                   });
                 }
@@ -247,8 +273,9 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
 router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.leagueId, 10);
   const page = parseInt(req.query.page || '1', 10);
-  const limit = parseInt(req.query.limit || '10', 10);
+  const limit = parseInt(req.query.limit || '6', 10);
   const offset = (page - 1) * limit;
+  const userId = req.user.id;
 
   db.all(
     `SELECT ft.*, u.username, u.country_code
@@ -263,7 +290,21 @@ router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
 
       db.get('SELECT COUNT(*) as count FROM fantasy_teams WHERE league_id = ?', [leagueId], (err, row) => {
         if (err) return res.status(500).json({ message: 'Database error' });
-        res.json({ page, limit, total: row.count, teams: teams || [] });
+
+        // Find user's rank
+        db.get(
+          `SELECT COUNT(*) + 1 as rank FROM fantasy_teams
+           WHERE league_id = ? AND (
+             total_points > (SELECT total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?)
+             OR (total_points = (SELECT total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?)
+                 AND id < (SELECT id FROM fantasy_teams WHERE league_id = ? AND user_id = ?))
+           )`,
+          [leagueId, leagueId, userId, leagueId, userId, leagueId, userId],
+          (err, rankRow) => {
+            const userRank = rankRow?.rank || null;
+            res.json({ page, limit, total: row.count, teams: teams || [], userRank });
+          }
+        );
       });
     }
   );

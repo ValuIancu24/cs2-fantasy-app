@@ -82,7 +82,7 @@ function MyTeam() {
 
   return (
     <div className="myteam-page">
-      <div className="myteam-header">
+      <div className="myteam-header" style={{ display: leagues.length === 0 ? 'none' : undefined }}>
         <h1>My Team</h1>
         {leagues.length > 1 && (
           <select
@@ -103,7 +103,8 @@ function MyTeam() {
       </div>
 
       {leagues.length === 0 && (
-        <div className="panel">
+        <div className="panel myteam-empty">
+          <h1>My Team</h1>
           <p className="muted">You are not in any leagues yet.</p>
           <button className="btn-primary" onClick={() => navigate('/my-fantasy')}>Browse Tournaments</button>
         </div>
@@ -127,8 +128,15 @@ function MyTeam() {
               <h2>{breakdown.team_name}</h2>
             </div>
             <div className="myteam-total-points">
-              <span className="points-value">{breakdown.total_points.toFixed(1)}</span>
+              <span className="points-value">{breakdown.total_points}</span>
               <span className="muted" style={{ fontSize: '0.75rem' }}>Total Points</span>
+              <span className="muted" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
+                {breakdown.rating_points} pts
+                {' + '}
+                <span className={breakdown.team_points >= 0 ? 'positive' : 'negative'}>
+                  {breakdown.team_points >= 0 ? '+' : ''}{breakdown.team_points} tp
+                </span>
+              </span>
             </div>
           </div>
 
@@ -186,7 +194,10 @@ function MyTeam() {
                           <span className="stat-a">{s.assists}A</span>
                         </span>
                         <span className={`myteam-series-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                          {s.series_points >= 0 ? '+' : ''}{s.series_points.toFixed(1)} pts
+                          {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                        </span>
+                        <span className={`myteam-series-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`} title="Team Points">
+                          {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
                         </span>
                       </div>
                     </div>
@@ -200,7 +211,13 @@ function MyTeam() {
                       {player.series.reduce((s, r) => s + r.deaths, 0)}D /&nbsp;
                       {player.series.reduce((s, r) => s + r.assists, 0)}A
                       &nbsp;·&nbsp;
-                      <strong>{player.total_points.toFixed(1)} pts</strong>
+                      <strong>{player.rating_points} pts</strong>
+                      &nbsp;+&nbsp;
+                      <span className={player.team_points >= 0 ? 'positive' : 'negative'}>
+                        {player.team_points >= 0 ? '+' : ''}{player.team_points} tp
+                      </span>
+                      &nbsp;=&nbsp;
+                      <strong>{player.total_points} total</strong>
                     </span>
                   </div>
                 )}
@@ -230,7 +247,10 @@ function MyTeam() {
                         <span className="stat-a">{s.assists}A</span>
                       </div>
                       <div className={`myteam-timeline-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                        {s.series_points >= 0 ? '+' : ''}{s.series_points.toFixed(1)} pts
+                        {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                      </div>
+                      <div className={`myteam-timeline-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`}>
+                        {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
                       </div>
                     </div>
                   );

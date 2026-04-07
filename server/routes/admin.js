@@ -88,7 +88,7 @@ router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (r
   db.all(
     `SELECT p.id, p.nickname, p.is_active, p.team_id, t.name as team_name
      FROM players p
-     LEFT JOIN teams t ON t.id = p.team_id
+     LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
      WHERE p.tournament_id = ?
      ORDER BY t.name, p.nickname`,
     [tournamentId],
