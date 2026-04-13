@@ -28,6 +28,14 @@ function AdminDashboard() {
   const [playerAliases, setPlayerAliases] = useState({});
   const [newAlias, setNewAlias] = useState({});
 
+  // Tournament banner
+  const [activeTournaments, setActiveTournaments] = useState([]);
+  const [bannerTournamentId, setBannerTournamentId] = useState('');
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState('');
+  const [bannerMessage, setBannerMessage] = useState('');
+  const [bannerSaving, setBannerSaving] = useState(false);
+
   // Wipe
   const [wiping, setWiping] = useState(false);
   const [wipeMessage, setWipeMessage] = useState('');
@@ -41,7 +49,19 @@ function AdminDashboard() {
     if (res.ok) setStats(await res.json());
   };
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => {
+    fetchStats();
+    fetch(`${apiBase}/tournaments/active`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setActiveTournaments(data);
+          setBannerTournamentId(String(data[0].id));
+          setBannerPreview(data[0].banner_url || '');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Tournament Sync ───────────────────────────────────────────────────────
 
@@ -117,6 +137,35 @@ function AdminDashboard() {
       setTournamentMessage('Eroare de rețea');
     } finally {
       setStatsSyncing(false);
+    }
+  };
+
+  // ── Tournament Banner ─────────────────────────────────────────────────────
+
+  const saveBanner = async () => {
+    if (!bannerTournamentId || !bannerFile) return;
+    setBannerSaving(true);
+    setBannerMessage('');
+    try {
+      const formData = new FormData();
+      formData.append('banner', bannerFile);
+      const res = await fetch(`${apiBase}/admin/tournaments/${bannerTournamentId}/banner`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBannerMessage('✅ Banner saved');
+        setBannerPreview(data.banner_url);
+        setBannerFile(null);
+      } else {
+        setBannerMessage(data.message || 'Failed to save banner');
+      }
+    } catch {
+      setBannerMessage('Eroare de rețea');
+    } finally {
+      setBannerSaving(false);
     }
   };
 
@@ -350,6 +399,64 @@ function AdminDashboard() {
         ) : (
           <p className="muted">Loading stats...</p>
         )}
+      </section>
+
+      {/* ── Tournament Banner ── */}
+      <section className="panel">
+        <h2>Tournament Banner</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Set a banner image URL for each tournament. Shown on the tournament card in My Fantasy.
+        </p>
+        <label>
+          Tournament
+          <select
+            value={bannerTournamentId}
+            onChange={e => {
+              setBannerTournamentId(e.target.value);
+              const t = activeTournaments.find(t => String(t.id) === e.target.value);
+              setBannerFile(null);
+              setBannerPreview(t?.banner_url || '');
+              setBannerMessage('');
+            }}
+          >
+            {activeTournaments.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Banner Image
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setBannerFile(file);
+              setBannerPreview(URL.createObjectURL(file));
+              setBannerMessage('');
+            }}
+            style={{ padding: '0.3rem 0' }}
+          />
+        </label>
+        {bannerPreview && (
+          <div style={{ marginBottom: '0.75rem' }}>
+            <img
+              src={bannerPreview}
+              alt="Banner preview"
+              style={{ width: '100%', maxHeight: 130, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+          </div>
+        )}
+        <button
+          type="button"
+          className="btn-primary small"
+          onClick={saveBanner}
+          disabled={bannerSaving || !bannerTournamentId || !bannerFile}
+        >
+          {bannerSaving ? 'Uploading...' : 'Upload Banner'}
+        </button>
+        {bannerMessage && <p className="info-text" style={{ marginTop: '0.5rem' }}>{bannerMessage}</p>}
       </section>
 
       {/* ── Manage Players ── */}

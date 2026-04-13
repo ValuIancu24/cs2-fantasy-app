@@ -20,6 +20,9 @@ function MyFantasy() {
   }, [apiBase]);
 
   return (
+    <div className="myfantasy-page">
+      <div className="myfantasy-bg-left" />
+      <div className="myfantasy-bg-right" />
     <div className="myfantasy">
       <h1 className="myfantasy-title">Active Tournaments</h1>
 
@@ -34,10 +37,20 @@ function MyFantasy() {
 
       <div className="tournament-cards">
         {tournaments.map(t => (
-          <div key={t.id} className="tournament-card">
-            <div className="tournament-card-badge">CS2</div>
+          <div
+            key={t.id}
+            className="tournament-card"
+            onClick={() => navigate(`/tournament/${t.id}/leagues`)}
+          >
+            <div
+              className="tournament-card-image"
+              style={t.banner_url ? { backgroundImage: `url(${t.banner_url})` } : {}}
+            >
+              <div className="tournament-card-badge">CS2</div>
+              <div className="tournament-card-name-overlay">{t.name}</div>
+            </div>
+
             <div className="tournament-card-body">
-              <h2>{t.name}</h2>
               {t.name_short && t.name_short !== t.name && (
                 <p className="tournament-card-short">{t.name_short}</p>
               )}
@@ -50,15 +63,19 @@ function MyFantasy() {
                 </p>
               )}
             </div>
-            <button
-              className="btn-primary"
-              onClick={() => navigate(`/tournament/${t.id}/leagues`)}
-            >
-              View Leagues
-            </button>
+
+            <div className="tournament-card-footer">
+              <button
+                className="btn-primary small"
+                onClick={e => { e.stopPropagation(); navigate(`/tournament/${t.id}/leagues`); }}
+              >
+                View Leagues →
+              </button>
+            </div>
           </div>
         ))}
       </div>
+    </div>
     </div>
   );
 }

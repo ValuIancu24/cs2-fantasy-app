@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
+import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/myteam.css';
 
 function formatDate(isoString) {
@@ -84,22 +85,19 @@ function MyTeam() {
     <div className="myteam-page">
       <div className="myteam-header" style={{ display: leagues.length === 0 ? 'none' : undefined }}>
         <h1>My Team</h1>
-        {leagues.length > 1 && (
-          <select
+        <div className="myteam-header-controls">
+          <SearchableSelect
+            options={leagues.map(l => ({ value: l.id, label: l.name + (l.tournament_name ? ` — ${l.tournament_name}` : '') }))}
             value={selectedLeagueId}
-            onChange={e => setSelectedLeagueId(e.target.value)}
-            className="league-select"
-          >
-            {leagues.map(l => (
-              <option key={l.id} value={l.id}>
-                {l.name}{l.tournament_name ? ` — ${l.tournament_name}` : ''}
-              </option>
-            ))}
-          </select>
-        )}
-        {leagues.length === 1 && (
-          <span className="muted">{leagues[0].name}{leagues[0].tournament_name ? ` — ${leagues[0].tournament_name}` : ''}</span>
-        )}
+            onChange={val => setSelectedLeagueId(String(val))}
+            placeholder="Select league..."
+          />
+          {selectedLeagueId && (
+            <button className="btn-outlined small" type="button" onClick={() => navigate(`/leaderboard?league=${selectedLeagueId}`)}>
+              View Leaderboard
+            </button>
+          )}
+        </div>
       </div>
 
       {leagues.length === 0 && (
