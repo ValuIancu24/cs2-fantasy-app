@@ -1,12 +1,15 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 import { FlagImg } from '../utils/flag.jsx';
+import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/leaderboard.css';
 
 const LIMIT = 6;
 
 function Leaderboard() {
   const { apiBase, user } = useContext(AuthContext);
+  const [searchParams] = useSearchParams();
   const [leagueId, setLeagueId] = useState('');
   const [leagues, setLeagues] = useState([]);
   const [page, setPage] = useState(1);
@@ -22,7 +25,11 @@ function Leaderboard() {
       });
       const l = await res.json();
       setLeagues(l);
-      if (l.length > 0) setLeagueId(l[0].id);
+      if (l.length > 0) {
+        const paramLeague = searchParams.get('league');
+        const match = paramLeague && l.find(x => String(x.id) === paramLeague);
+        setLeagueId(match ? String(match.id) : String(l[0].id));
+      }
     };
     loadLeagues();
   }, [apiBase, token]);
@@ -67,13 +74,12 @@ function Leaderboard() {
       <div className="panel leaderboard">
         <h2>League Leaderboard</h2>
         <div className="leaderboard-controls">
-          <select value={leagueId} onChange={e => { setLeagueId(e.target.value); setPage(1); }}>
-            {leagues.map(l => (
-              <option key={l.id} value={l.id}>
-                {l.name} (#{l.id})
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={leagues.map(l => ({ value: l.id, label: l.name }))}
+            value={leagueId}
+            onChange={val => { setLeagueId(val); setPage(1); }}
+            placeholder="Select a league..."
+          />
         </div>
 
         <table>

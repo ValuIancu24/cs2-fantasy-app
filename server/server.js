@@ -27,9 +27,11 @@ app.use(
 
 app.use(express.json());
 
-// Static serving for uploaded profile images (for production builds)
+// Static serving for uploaded images
 const uploadsPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'profiles');
 app.use('/uploads/profiles', express.static(uploadsPath));
+const bannersPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'banners');
+app.use('/uploads/banners', express.static(bannersPath));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

@@ -1,0 +1,130 @@
+.ss-wrapper {
+  position: relative;
+  display: inline-block;
+  min-width: 220px;
+}
+
+.ss-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: rgba(15, 3, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f7f4ff;
+  border-radius: 0.7rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.ss-trigger:hover {
+  border-color: rgba(160, 80, 255, 0.5);
+}
+
+.ss-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ss-placeholder {
+  color: rgba(247, 244, 255, 0.4);
+}
+
+.ss-arrow {
+  font-size: 0.75rem;
+  opacity: 0.5;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.ss-arrow.open {
+  transform: rotate(180deg);
+}
+
+.ss-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: rgba(18, 4, 45, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.7rem;
+  z-index: 50;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  min-width: 100%;
+}
+
+.ss-search-wrap {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ss-search {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f7f4ff;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ss-search:focus {
+  border-color: rgba(160, 80, 255, 0.5);
+}
+
+.ss-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 0.3rem 0;
+}
+
+.ss-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ss-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ss-list::-webkit-scrollbar-thumb {
+  background: rgba(160, 80, 255, 0.3);
+  border-radius: 2px;
+}
+
+.ss-option {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: rgba(247, 244, 255, 0.85);
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ss-option:hover {
+  background: rgba(160, 80, 255, 0.15);
+}
+
+.ss-option.active {
+  background: rgba(160, 80, 255, 0.2);
+  color: #e0c0ff;
+  font-weight: 600;
+}
+
+.ss-empty {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+  color: rgba(247, 244, 255, 0.35);
+}

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
+import { FlagImg } from '../utils/flag.jsx';
 import '../styles/tournament-leagues.css';
 
 function TournamentLeagues() {
@@ -12,6 +13,7 @@ function TournamentLeagues() {
 
   const [leagues, setLeagues] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
+  const [tournamentBanner, setTournamentBanner] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Create form state
@@ -31,6 +33,9 @@ function TournamentLeagues() {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
 
+  // Search
+  const [leagueSearch, setLeagueSearch] = useState('');
+
   const fetchLeagues = () => {
     setLoading(true);
     fetch(`${apiBase}/tournaments/${tournamentId}/leagues`, {
@@ -46,12 +51,15 @@ function TournamentLeagues() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Also fetch tournament name
+    // Also fetch tournament name + banner
     fetch(`${apiBase}/tournaments/active`)
       .then(r => r.json())
       .then(data => {
         const t = data.find(t => String(t.id) === String(tournamentId));
-        if (t) setTournamentName(t.name);
+        if (t) {
+          setTournamentName(t.name);
+          setTournamentBanner(t.banner_url || '');
+        }
       })
       .catch(() => {});
   };
@@ -154,25 +162,53 @@ function TournamentLeagues() {
     else { const d = await res.json(); alert(d.message || 'Failed to delete'); }
   };
 
-  const publicLeagues = leagues.filter(l => l.is_public === 1);
-  const privateLeagues = leagues.filter(l => l.is_public === 0);
+  const searchLower = leagueSearch.toLowerCase();
+  const publicLeagues = leagues.filter(l => l.is_public === 1 && l.name.toLowerCase().includes(searchLower));
+  const privateLeagues = leagues.filter(l => l.is_public === 0 && l.name.toLowerCase().includes(searchLower));
 
   return (
     <div className="tl-page">
-      <div className="tl-header">
-        <button className="btn-text tl-back" onClick={() => navigate('/my-fantasy')}>
-          ← Back to Tournaments
-        </button>
-        <h1>{tournamentName || `Tournament #${tournamentId}`} — Leagues</h1>
+      <div
+        className={`tl-banner ${tournamentBanner ? 'tl-banner--has-image' : ''}`}
+        style={tournamentBanner ? { backgroundImage: `url(${tournamentBanner})` } : {}}
+      >
+        <div className="tl-banner-content">
+          <button className="btn-text tl-back" onClick={() => navigate('/my-fantasy')}>
+            ← Back to Tournaments
+          </button>
+          <h1 className="tl-banner-title">{tournamentName || `Tournament #${tournamentId}`}</h1>
+          <p className="tl-banner-sub">
+            {leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}
+          </p>
+        </div>
       </div>
 
-      <div className="tl-layout">
+      <div className="tl-layout" style={{ marginTop: '1.5rem' }}>
         {/* LEFT: League list */}
         <div className="tl-list-section">
+          {leagues.length > 0 && (
+            <div className="tl-search-wrap">
+              <input
+                type="text"
+                placeholder="Search leagues..."
+                value={leagueSearch}
+                onChange={e => setLeagueSearch(e.target.value)}
+                className="tl-search-input"
+              />
+              {leagueSearch && (
+                <button className="tl-search-clear" onClick={() => setLeagueSearch('')}>×</button>
+              )}
+            </div>
+          )}
+
           {loading && <p className="muted">Loading leagues...</p>}
 
           {!loading && leagues.length === 0 && (
             <p className="muted">No leagues yet. Be the first to create one!</p>
+          )}
+
+          {!loading && leagues.length > 0 && publicLeagues.length === 0 && privateLeagues.length === 0 && (
+            <p className="muted">No leagues match "{leagueSearch}".</p>
           )}
 
           {publicLeagues.length > 0 && (
@@ -189,11 +225,28 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
                         </div>
                       ) : (
-                        <span className="tl-league-name">{l.name}</span>
+                        <div className="tl-league-name-row">
+                          <span className="tl-league-name">{l.name}</span>
+                          {l.is_member ? <span className="tl-joined-badge">✓ Joined</span> : null}
+                        </div>
                       )}
-                      <span className="muted tl-league-meta">
-                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · created by {l.creator_name}
-                      </span>
+                      <div className="tl-league-meta">
+                        <span className="tl-member-count">
+                          <span className="tl-member-icon">👥</span>
+                          {l.member_count} member{l.member_count !== 1 ? 's' : ''}
+                        </span>
+                        <span className="tl-created-by">
+                          created by
+                          <span className="tl-creator-chip">
+                            {l.creator_picture
+                              ? <img src={l.creator_picture} alt="" className="tl-creator-avatar" />
+                              : <span className="tl-creator-avatar tl-creator-placeholder">{l.creator_name?.[0]?.toUpperCase()}</span>
+                            }
+                            <FlagImg code={l.creator_country} style={{ width: 14 }} />
+                            <span>{l.creator_name}</span>
+                          </span>
+                        </span>
+                      </div>
                     </div>
                     <div className="tl-card-actions">
                       {isAdmin && (
@@ -201,6 +254,9 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-ghost" onClick={() => { setEditingId(l.id); setEditName(l.name); }}>Edit</button>
                           <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
                         </>
+                      )}
+                      {l.is_member && (
+                        <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>
@@ -228,11 +284,42 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
                         </div>
                       ) : (
-                        <span className="tl-league-name">{l.name}</span>
+                        <div className="tl-league-name-row">
+                          <span className="tl-league-name">{l.name}</span>
+                          {l.is_member ? <span className="tl-joined-badge">✓ Joined</span> : null}
+                        </div>
                       )}
-                      <span className="muted tl-league-meta">
-                        {l.member_count} member{l.member_count !== 1 ? 's' : ''} · created by {l.creator_name} · 🔒 Private
-                      </span>
+                      <div className="tl-league-meta">
+                        <span className="tl-member-count">
+                          <span className="tl-member-icon">👥</span>
+                          {l.member_count} member{l.member_count !== 1 ? 's' : ''}
+                          <span className="tl-private-badge">🔒 Private</span>
+                        </span>
+                        <span className="tl-created-by">
+                          created by
+                          <span className="tl-creator-chip">
+                            {l.creator_picture
+                              ? <img src={l.creator_picture} alt="" className="tl-creator-avatar" />
+                              : <span className="tl-creator-avatar tl-creator-placeholder">{l.creator_name?.[0]?.toUpperCase()}</span>
+                            }
+                            <FlagImg code={l.creator_country} style={{ width: 14 }} />
+                            <span>{l.creator_name}</span>
+                          </span>
+                        </span>
+                        {(isAdmin || l.is_member) && l.invite_code && (
+                          <span className="tl-invite-inline">
+                            <span className="tl-invite-inline-label">Code:</span>
+                            <span className="tl-invite-inline-code">{l.invite_code}</span>
+                            <button
+                              className="tl-invite-copy"
+                              onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(l.invite_code); }}
+                              title="Copy"
+                            >
+                              Copy
+                            </button>
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="tl-card-actions">
                       {isAdmin && (
@@ -240,6 +327,9 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-ghost" onClick={() => { setEditingId(l.id); setEditName(l.name); }}>Edit</button>
                           <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
                         </>
+                      )}
+                      {l.is_member && (
+                        <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>

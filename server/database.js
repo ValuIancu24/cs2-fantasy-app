@@ -132,6 +132,7 @@ function initDatabase() {
     db.run(`ALTER TABLE leagues ADD COLUMN invite_code TEXT`, () => {});
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
     db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN banner_url TEXT`, () => {});
 
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {

@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/tournaments/active
 router.get('/active', (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, last_synced FROM tournaments WHERE status = 'active' ORDER BY last_synced DESC`,
+    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments WHERE status = 'active' ORDER BY last_synced DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -28,7 +28,10 @@ router.get('/:tournamentId/leagues', authMiddleware, (req, res) => {
        l.is_public,
        l.invite_code,
        l.created_at,
+       l.creator_id,
        u.username AS creator_name,
+       u.profile_picture AS creator_picture,
+       u.country_code AS creator_country,
        (SELECT COUNT(*) FROM league_members lm WHERE lm.league_id = l.id) AS member_count,
        EXISTS(SELECT 1 FROM league_members lm2 WHERE lm2.league_id = l.id AND lm2.user_id = ?) AS is_member
      FROM leagues l

@@ -1,10 +1,28 @@
 const express = require('express');
+const path = require('path');
+const multer = require('multer');
 const db = require('../database');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
 const gridApi = require('../services/gridApi');
 const dataAdapter = require('../services/dataAdapter');
 
 const router = express.Router();
+
+// Multer config for tournament banners
+const bannerStorage = multer.diskStorage({
+  destination: path.join(__dirname, '..', '..', 'client', 'public', 'uploads', 'banners'),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, `tournament_${req.params.id}${ext}`);
+  }
+});
+const uploadBanner = multer({
+  storage: bannerStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    cb(null, /image\/(jpeg|png|webp|gif)/.test(file.mimetype));
+  }
+});
 
 // ── STATS ────────────────────────────────────────────────────────────────────
 
@@ -174,6 +192,25 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
       }
     );
   });
+});
+
+// ── TOURNAMENT BANNER ─────────────────────────────────────────────────────────
+
+router.post('/tournaments/:id/banner', authMiddleware, requireAdmin, uploadBanner.single('banner'), (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+  const bannerUrl = `/uploads/banners/${req.file.filename}`;
+  db.run(
+    `UPDATE tournaments SET banner_url = ? WHERE id = ?`,
+    [bannerUrl, id],
+    function (err) {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });
+      res.json({ success: true, banner_url: bannerUrl });
+    }
+  );
 });
 
 module.exports = router;
