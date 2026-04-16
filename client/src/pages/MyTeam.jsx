@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/myteam.css';
@@ -14,12 +14,14 @@ function formatDate(isoString) {
 }
 
 function MyTeam() {
+  const { tournamentId } = useParams();
   const { apiBase } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = localStorage.getItem('cs2_fantasy_token');
 
   const [leagues, setLeagues] = useState([]);
+  const [tournamentName, setTournamentName] = useState('');
   const [selectedLeagueId, setSelectedLeagueId] = useState('');
   const [breakdown, setBreakdown] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,15 +32,25 @@ function MyTeam() {
     fetch(`${apiBase}/leagues`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setLeagues(data);
+        if (!Array.isArray(data)) return;
+        const filtered = data.filter(l => String(l.tournament_id) === String(tournamentId));
+        setLeagues(filtered);
+        if (filtered.length > 0) {
           const paramLeague = searchParams.get('league');
-          const match = paramLeague && data.find(l => String(l.id) === paramLeague);
-          setSelectedLeagueId(match ? paramLeague : String(data[0].id));
+          const match = paramLeague && filtered.find(l => String(l.id) === paramLeague);
+          setSelectedLeagueId(match ? paramLeague : String(filtered[0].id));
         }
       })
       .catch(() => {});
-  }, [apiBase, token]);
+  }, [apiBase, token, tournamentId]);
+
+  useEffect(() => {
+    if (!tournamentId) return;
+    fetch(`${apiBase}/tournaments/${tournamentId}/info`)
+      .then(r => r.json())
+      .then(t => { if (t?.name) setTournamentName(t.name); })
+      .catch(() => {});
+  }, [apiBase, tournamentId]);
 
   useEffect(() => {
     if (!selectedLeagueId) return;
@@ -63,7 +75,9 @@ function MyTeam() {
 
   const togglePlayer = id => setExpandedPlayer(prev => (prev === id ? null : id));
 
-  // All (player, serie) pairs sorted by scheduled_at descending
+  const selectedLeague = leagues.find(l => String(l.id) === selectedLeagueId);
+  const isFinished = selectedLeague?.tournament_status === 'historical';
+
   const allSeriesEntries = useMemo(() => {
     if (!breakdown) return [];
     const entries = [];
@@ -83,28 +97,36 @@ function MyTeam() {
 
   return (
     <div className="myteam-page">
-      <div className="myteam-header" style={{ display: leagues.length === 0 ? 'none' : undefined }}>
-        <h1>My Team</h1>
-        <div className="myteam-header-controls">
-          <SearchableSelect
-            options={leagues.map(l => ({ value: l.id, label: l.name + (l.tournament_name ? ` — ${l.tournament_name}` : '') }))}
-            value={selectedLeagueId}
-            onChange={val => setSelectedLeagueId(String(val))}
-            placeholder="Select league..."
-          />
-          {selectedLeagueId && (
-            <button className="btn-outlined small" type="button" onClick={() => navigate(`/leaderboard?league=${selectedLeagueId}`)}>
-              View Leaderboard
-            </button>
-          )}
+      <div className="myteam-header">
+        <div className="myteam-header-top">
+          <button className="btn-text" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
+            ← Back to Leagues
+          </button>
+          <h1>{tournamentName ? `${tournamentName} — My Team` : 'My Team'}</h1>
         </div>
+        {leagues.length > 0 && (
+          <div className="myteam-header-controls">
+            <SearchableSelect
+              options={leagues.map(l => ({ value: l.id, label: l.name }))}
+              value={selectedLeagueId}
+              onChange={val => setSelectedLeagueId(String(val))}
+              placeholder="Select league..."
+            />
+            {selectedLeagueId && (
+              <button className="btn-outlined small" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${selectedLeagueId}`)}>
+                View Leaderboard
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {leagues.length === 0 && (
         <div className="panel myteam-empty">
-          <h1>My Team</h1>
-          <p className="muted">You are not in any leagues yet.</p>
-          <button className="btn-primary" onClick={() => navigate('/my-fantasy')}>Browse Tournaments</button>
+          <p className="muted">You are not in any leagues for this tournament.</p>
+          <button className="btn-primary" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
+            Browse Leagues
+          </button>
         </div>
       )}
 
@@ -113,9 +135,11 @@ function MyTeam() {
       {error && (
         <div className="panel">
           <p className="muted">{error}</p>
-          <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${selectedLeagueId}`)}>
-            Build Team
-          </button>
+          {!isFinished && (
+            <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${selectedLeagueId}`)}>
+              Build Team
+            </button>
+          )}
         </div>
       )}
 
@@ -257,14 +281,16 @@ function MyTeam() {
             </div>
           )}
 
-          <div style={{ marginTop: '1rem' }}>
-            <button
-              className="btn-outlined small"
-              onClick={() => navigate(`/team-builder/${selectedLeagueId}`)}
-            >
-              Edit Team
-            </button>
-          </div>
+          {!isFinished && (
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                className="btn-outlined small"
+                onClick={() => navigate(`/team-builder/${selectedLeagueId}`)}
+              >
+                Edit Team
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
