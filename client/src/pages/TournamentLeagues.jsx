@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 import { FlagImg } from '../utils/flag.jsx';
 import '../styles/tournament-leagues.css';
+import '../styles/finished-tournaments.css';
 
 function TournamentLeagues() {
   const { tournamentId } = useParams();
@@ -14,6 +15,7 @@ function TournamentLeagues() {
   const [leagues, setLeagues] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
   const [tournamentBanner, setTournamentBanner] = useState('');
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Create form state
@@ -51,14 +53,14 @@ function TournamentLeagues() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Also fetch tournament name + banner
-    fetch(`${apiBase}/tournaments/active`)
+    // Also fetch tournament info (name, banner, status)
+    fetch(`${apiBase}/tournaments/${tournamentId}/info`)
       .then(r => r.json())
-      .then(data => {
-        const t = data.find(t => String(t.id) === String(tournamentId));
+      .then(t => {
         if (t) {
           setTournamentName(t.name);
           setTournamentBanner(t.banner_url || '');
+          setIsReadOnly(t.status === 'historical');
         }
       })
       .catch(() => {});
@@ -176,7 +178,10 @@ function TournamentLeagues() {
           <button className="btn-text tl-back" onClick={() => navigate('/my-fantasy')}>
             ← Back to Tournaments
           </button>
-          <h1 className="tl-banner-title">{tournamentName || `Tournament #${tournamentId}`}</h1>
+          <h1 className="tl-banner-title">
+            {tournamentName || `Tournament #${tournamentId}`}
+            {isReadOnly && <span className="tl-finished-badge">Finished</span>}
+          </h1>
           <p className="tl-banner-sub">
             {leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}
           </p>
@@ -260,9 +265,9 @@ function TournamentLeagues() {
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
-                      ) : (
+                      ) : !isReadOnly ? (
                         <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -333,9 +338,9 @@ function TournamentLeagues() {
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
-                      ) : (
+                      ) : !isReadOnly ? (
                         <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -344,8 +349,8 @@ function TournamentLeagues() {
           )}
         </div>
 
-        {/* RIGHT: Create league form */}
-        <div className="tl-create-section panel">
+        {/* RIGHT: Create league form — hidden for finished tournaments */}
+        <div className="tl-create-section panel" style={isReadOnly ? { display: 'none' } : {}}>
           <h2>Create New League</h2>
           <form onSubmit={handleCreate} className="tl-create-form">
             <label>

@@ -1,0 +1,31 @@
+.ft-finished-ribbon {
+  position: absolute;
+  top: 12px;
+  right: -6px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.65rem;
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  z-index: 2;
+}
+
+.tl-finished-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c084fc;
+  background: rgba(160, 80, 255, 0.12);
+  border: 1px solid rgba(160, 80, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  margin-left: 0.75rem;
+  vertical-align: middle;
+}

@@ -137,6 +137,7 @@ function initDatabase() {
 
     // Migrations — silently ignore if column already exists
     db.run(`ALTER TABLE leagues ADD COLUMN tournament_id INTEGER`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN is_visible INTEGER DEFAULT 1`, () => {});
     // Backfill player_tournaments from existing players rows
     db.run(`INSERT OR IGNORE INTO player_tournaments (player_id, tournament_id, team_id)
             SELECT id, tournament_id, team_id FROM players WHERE tournament_id IS NOT NULL`, () => {});

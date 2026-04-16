@@ -36,6 +36,10 @@ function AdminDashboard() {
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerSaving, setBannerSaving] = useState(false);
 
+  // Manage tournaments
+  const [allTournaments, setAllTournaments] = useState([]);
+  const [tournamentStatusMsg, setTournamentStatusMsg] = useState('');
+
   // Wipe
   const [wiping, setWiping] = useState(false);
   const [wipeMessage, setWipeMessage] = useState('');
@@ -49,19 +53,43 @@ function AdminDashboard() {
     if (res.ok) setStats(await res.json());
   };
 
-  useEffect(() => {
-    fetchStats();
-    fetch(`${apiBase}/tournaments/active`)
+  const fetchAllTournaments = () => {
+    fetch(`${apiBase}/admin/tournaments`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setActiveTournaments(data);
-          setBannerTournamentId(String(data[0].id));
-          setBannerPreview(data[0].banner_url || '');
+        if (Array.isArray(data)) {
+          setAllTournaments(data);
+          const active = data.filter(t => t.status === 'active');
+          setActiveTournaments(active);
+          if (active.length > 0) {
+            setBannerTournamentId(String(active[0].id));
+            setBannerPreview(active[0].banner_url || '');
+          }
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchAllTournaments();
   }, []);
+
+  const updateTournamentStatus = async (id, patch) => {
+    setTournamentStatusMsg('');
+    const res = await fetch(`${apiBase}/admin/tournaments/${id}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+    if (res.ok) {
+      fetchAllTournaments();
+      setTournamentStatusMsg('✅ Updated');
+      setTimeout(() => setTournamentStatusMsg(''), 2000);
+    }
+  };
 
   // ── Tournament Sync ───────────────────────────────────────────────────────
 
@@ -555,6 +583,91 @@ function AdminDashboard() {
             ))}
           </div>
         ))}
+      </section>
+
+      {/* ── Manage Tournaments ── */}
+      <section className="panel">
+        <h2>Manage Tournaments</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Marchează turnee ca terminate (Historical) sau ascunde-le de useri (Off the record).
+        </p>
+        {tournamentStatusMsg && <p className="info-text" style={{ marginBottom: '0.5rem' }}>{tournamentStatusMsg}</p>}
+        <table style={{ width: '100%', fontSize: '0.85rem' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left' }}>Turneu</th>
+              <th>Status</th>
+              <th>Vizibil</th>
+              <th>Acțiuni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allTournaments.map(t => (
+              <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <td style={{ padding: '0.5rem 0' }}>
+                  <span style={{ fontWeight: 600 }}>{t.name}</span>
+                  <span className="muted" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>#{t.id}</span>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <span style={{
+                    fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem',
+                    borderRadius: 4,
+                    background: t.status === 'active' ? 'rgba(96,230,184,0.12)' : 'rgba(160,80,255,0.12)',
+                    color: t.status === 'active' ? '#60e6b8' : '#c084fc',
+                    border: `1px solid ${t.status === 'active' ? 'rgba(96,230,184,0.3)' : 'rgba(160,80,255,0.3)'}`
+                  }}>
+                    {t.status === 'active' ? 'Active' : 'Historical'}
+                  </span>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.85rem' }}>{t.is_visible === 0 ? '🔒 Hidden' : '👁 Visible'}</span>
+                </td>
+                <td style={{ textAlign: 'right', paddingRight: '0.25rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                    {t.status === 'active' && (
+                      <button
+                        className="btn-tiny"
+                        onClick={() => {
+                          if (window.confirm(`Marchezi "${t.name}" ca terminat? Va apărea în Finished Tournaments.`))
+                            updateTournamentStatus(t.id, { status: 'historical' });
+                        }}
+                      >
+                        Mark Finished
+                      </button>
+                    )}
+                    {t.status === 'historical' && (
+                      <button
+                        className="btn-tiny btn-ghost"
+                        onClick={() => updateTournamentStatus(t.id, { status: 'active' })}
+                      >
+                        Reactivate
+                      </button>
+                    )}
+                    <button
+                      className="btn-tiny btn-ghost"
+                      onClick={() => updateTournamentStatus(t.id, { is_visible: t.is_visible === 0 ? 1 : 0 })}
+                    >
+                      {t.is_visible === 0 ? 'Show' : 'Hide'}
+                    </button>
+                    <button
+                      className="btn-tiny btn-danger-sm"
+                      onClick={async () => {
+                        if (!window.confirm(`Ștergi "${t.name}"? Se vor șterge toate statisticile, echipele și seriile asociate.`)) return;
+                        const res = await fetch(`${apiBase}/admin/tournaments/${t.id}`, {
+                          method: 'DELETE',
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        if (res.ok) { fetchAllTournaments(); fetchStats(); }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
 
       {/* ── Danger Zone ── */}

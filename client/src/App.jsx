@@ -11,6 +11,7 @@ import TeamBuilder from './pages/TeamBuilder.jsx';
 import MyTeam from './pages/MyTeam.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import FinishedTournaments from './pages/FinishedTournaments.jsx';
 import Profile from './pages/Profile.jsx';
 import { FlagImg } from './utils/flag.jsx';
 import './styles/app.css';
@@ -71,6 +72,7 @@ function App() {
             {user && (
               <>
                 <Link to="/my-fantasy">My Fantasy</Link>
+                <Link to="/finished-tournaments">Finished</Link>
                 <Link to="/leagues">Leagues</Link>
                 <Link to="/my-team">My Team</Link>
                 <Link to="/leaderboard">Leaderboard</Link>
@@ -113,6 +115,7 @@ function App() {
             <Route path="/register" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Register />} />
             <Route path="/dashboard" element={<Navigate to="/my-fantasy" replace />} />
             <Route path="/leagues" element={<ProtectedRoute><LeaguesRedirect /></ProtectedRoute>} />
+            <Route path="/finished-tournaments" element={<ProtectedRoute><FinishedTournaments /></ProtectedRoute>} />
             <Route
               path="/my-fantasy"
               element={
