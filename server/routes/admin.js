@@ -195,6 +195,59 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
   });
 });
 
+// ── TOURNAMENT STATUS ─────────────────────────────────────────────────────────
+
+// GET all tournaments (for admin management)
+router.get('/tournaments', authMiddleware, requireAdmin, (req, res) => {
+  db.all(
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY last_synced DESC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json(rows || []);
+    }
+  );
+});
+
+// PATCH /api/admin/tournaments/:id/status — mark as historical or toggle visibility
+router.patch('/tournaments/:id/status', authMiddleware, requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  const { status, is_visible } = req.body;
+  const updates = [];
+  const params = [];
+
+  if (status !== undefined) { updates.push('status = ?'); params.push(status); }
+  if (is_visible !== undefined) { updates.push('is_visible = ?'); params.push(is_visible ? 1 : 0); }
+  if (updates.length === 0) return res.status(400).json({ message: 'Nothing to update' });
+
+  params.push(id);
+  db.run(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`, params, function (err) {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });
+    res.json({ success: true });
+  });
+});
+
+// DELETE /api/admin/tournaments/:id — delete tournament and all related data
+router.delete('/tournaments/:id', authMiddleware, requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  db.serialize(() => {
+    db.run('DELETE FROM player_stats WHERE tournament_id = ?', [id]);
+    db.run('DELETE FROM series_cache WHERE tournament_id = ?', [id]);
+    db.run('DELETE FROM player_tournaments WHERE tournament_id = ?', [id]);
+    db.run('DELETE FROM teams WHERE tournament_id = ?', [id]);
+    db.run('DELETE FROM tournaments WHERE id = ?', [id], function (err) {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });
+      res.json({ success: true });
+    });
+  });
+});
+
 // ── TOURNAMENT BANNER ─────────────────────────────────────────────────────────
 
 router.post('/tournaments/:id/banner', authMiddleware, requireAdmin, uploadBanner.single('banner'), (req, res) => {

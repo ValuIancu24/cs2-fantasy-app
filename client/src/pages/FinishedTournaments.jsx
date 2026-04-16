@@ -1,0 +1,84 @@
+import React, { useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App.jsx';
+import '../styles/myfantasy.css';
+import '../styles/finished-tournaments.css';
+
+function FinishedTournaments() {
+  const { apiBase } = useContext(AuthContext);
+  const [tournaments, setTournaments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const token = localStorage.getItem('cs2_fantasy_token');
+
+  useEffect(() => {
+    fetch(`${apiBase}/tournaments/historical`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setTournaments(Array.isArray(data) ? data : []))
+      .catch(() => setTournaments([]))
+      .finally(() => setLoading(false));
+  }, [apiBase, token]);
+
+  return (
+    <div className="myfantasy-page">
+      <div className="myfantasy-bg-left" />
+      <div className="myfantasy-bg-right" />
+      <div className="myfantasy">
+        <h1 className="myfantasy-title">Finished Tournaments</h1>
+
+        {loading && <p className="muted">Loading tournaments...</p>}
+
+        {!loading && tournaments.length === 0 && (
+          <div className="myfantasy-empty">
+            <p>No finished tournaments yet.</p>
+            <p className="muted">Tournaments will appear here once an admin marks them as finished.</p>
+          </div>
+        )}
+
+        <div className="tournament-cards">
+          {tournaments.map(t => (
+            <div
+              key={t.id}
+              className="tournament-card"
+              onClick={() => navigate(`/tournament/${t.id}/leagues`)}
+            >
+              <div
+                className="tournament-card-image"
+                style={t.banner_url ? { backgroundImage: `url(${t.banner_url})` } : {}}
+              >
+                <div className="tournament-card-badge">CS2</div>
+                <div className="ft-finished-ribbon">Finished</div>
+                <div className="tournament-card-name-overlay">{t.name}</div>
+              </div>
+
+              <div className="tournament-card-body">
+                {t.name_short && t.name_short !== t.name && (
+                  <p className="tournament-card-short">{t.name_short}</p>
+                )}
+                {t.last_synced && (
+                  <p className="muted tournament-card-meta">
+                    Synced {new Date(t.last_synced).toLocaleDateString('ro-RO')}
+                  </p>
+                )}
+              </div>
+
+              <div className="tournament-card-footer">
+                <button
+                  className="btn-outlined small"
+                  onClick={e => { e.stopPropagation(); navigate(`/tournament/${t.id}/leagues`); }}
+                >
+                  View Leagues →
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default FinishedTournaments;

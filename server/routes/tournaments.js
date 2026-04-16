@@ -7,11 +7,42 @@ const router = express.Router();
 // GET /api/tournaments/active
 router.get('/active', (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments WHERE status = 'active' ORDER BY last_synced DESC`,
+    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments
+     WHERE status = 'active' AND (is_visible IS NULL OR is_visible = 1)
+     ORDER BY last_synced DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
       res.json(rows || []);
+    }
+  );
+});
+
+// GET /api/tournaments/historical
+router.get('/historical', authMiddleware, (req, res) => {
+  db.all(
+    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments
+     WHERE status = 'historical' AND is_visible = 1
+     ORDER BY last_synced DESC`,
+    [],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json(rows || []);
+    }
+  );
+});
+
+// GET /api/tournaments/:id/info
+router.get('/:tournamentId/info', (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+  db.get(
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments WHERE id = ?`,
+    [tournamentId],
+    (err, row) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (!row) return res.status(404).json({ message: 'Tournament not found' });
+      res.json(row);
     }
   );
 });
