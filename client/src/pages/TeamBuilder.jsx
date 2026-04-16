@@ -18,6 +18,19 @@ function TeamBuilder() {
 
   useEffect(() => {
     const load = async () => {
+      // Check if the tournament is finished — if so, redirect to view-only
+      const leaguesRes = await fetch(`${apiBase}/leagues`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (leaguesRes.ok) {
+        const allLeagues = await leaguesRes.json();
+        const thisLeague = allLeagues.find(l => String(l.id) === String(leagueId));
+        if (thisLeague?.tournament_status === 'historical') {
+          navigate(`/tournament/${thisLeague.tournament_id}/my-team?league=${leagueId}`, { replace: true });
+          return;
+        }
+      }
+
       // Fetch players for this league's tournament
       const res = await fetch(`${apiBase}/players?league_id=${leagueId}`);
       if (res.ok) {

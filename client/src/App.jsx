@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useMatch, Link } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -37,6 +37,30 @@ function ProtectedRoute({ children, adminOnly = false }) {
   return children;
 }
 
+function NavLinks({ user }) {
+  const tournamentMatch = useMatch('/tournament/:tournamentId/*');
+  const tournamentId = tournamentMatch?.params?.tournamentId;
+
+  return (
+    <nav className="nav-links">
+      {user && (
+        <>
+          <Link to="/my-fantasy">My Fantasy</Link>
+          <Link to="/finished-tournaments">Ended Tournaments</Link>
+          <Link to="/leagues">Leagues</Link>
+          {tournamentId && (
+            <>
+              <Link to={`/tournament/${tournamentId}/my-team`}>My Team</Link>
+              <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
+            </>
+          )}
+          {user.role === 'admin' && <Link to="/admin">Admin</Link>}
+        </>
+      )}
+    </nav>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,18 +92,7 @@ function App() {
             ? <span className="logo">CS2 Fantasy</span>
             : <Link to="/" className="logo">CS2 Fantasy</Link>
           }
-          <nav className="nav-links">
-            {user && (
-              <>
-                <Link to="/my-fantasy">My Fantasy</Link>
-                <Link to="/finished-tournaments">Finished</Link>
-                <Link to="/leagues">Leagues</Link>
-                <Link to="/my-team">My Team</Link>
-                <Link to="/leaderboard">Leaderboard</Link>
-                {user.role === 'admin' && <Link to="/admin">Admin</Link>}
-              </>
-            )}
-          </nav>
+          <NavLinks user={user} />
           <div className="auth-section">
             {user ? (
               <>
@@ -141,7 +154,7 @@ function App() {
               }
             />
             <Route
-              path="/my-team"
+              path="/tournament/:tournamentId/my-team"
               element={
                 <ProtectedRoute>
                   <MyTeam />
@@ -149,7 +162,7 @@ function App() {
               }
             />
             <Route
-              path="/leaderboard"
+              path="/tournament/:tournamentId/leaderboard"
               element={
                 <ProtectedRoute>
                   <Leaderboard />

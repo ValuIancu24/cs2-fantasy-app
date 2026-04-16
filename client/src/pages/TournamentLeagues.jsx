@@ -261,10 +261,10 @@ function TournamentLeagues() {
                         </>
                       )}
                       {l.is_member && (
-                        <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
-                        <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
                       ) : !isReadOnly ? (
                         <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
                       ) : null}
@@ -334,10 +334,10 @@ function TournamentLeagues() {
                         </>
                       )}
                       {l.is_member && (
-                        <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
-                        <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
                       ) : !isReadOnly ? (
                         <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
                       ) : null}

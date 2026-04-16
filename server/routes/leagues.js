@@ -73,12 +73,14 @@ router.get('/', authMiddleware, (req, res) => {
   const sql = isAdmin
     ? `SELECT l.*,
               t.name AS tournament_name,
+              t.status AS tournament_status,
               (SELECT COUNT(*) FROM league_members lm WHERE lm.league_id = l.id) AS member_count
        FROM leagues l
        LEFT JOIN tournaments t ON t.id = l.tournament_id
        ORDER BY l.created_at DESC`
     : `SELECT l.*,
               t.name AS tournament_name,
+              t.status AS tournament_status,
               (SELECT COUNT(*) FROM league_members lm WHERE lm.league_id = l.id) AS member_count
        FROM leagues l
        JOIN league_members m ON m.league_id = l.id

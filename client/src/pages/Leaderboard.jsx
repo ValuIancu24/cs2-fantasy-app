@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 import { FlagImg } from '../utils/flag.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
@@ -8,10 +8,13 @@ import '../styles/leaderboard.css';
 const LIMIT = 6;
 
 function Leaderboard() {
+  const { tournamentId } = useParams();
   const { apiBase, user } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [leagueId, setLeagueId] = useState('');
   const [leagues, setLeagues] = useState([]);
+  const [tournamentName, setTournamentName] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [userPage, setUserPage] = useState(null);
@@ -23,16 +26,28 @@ function Leaderboard() {
       const res = await fetch(`${apiBase}/leagues`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const l = await res.json();
-      setLeagues(l);
-      if (l.length > 0) {
+      const all = await res.json();
+      // Filter to only leagues for this tournament
+      const filtered = (Array.isArray(all) ? all : []).filter(
+        l => String(l.tournament_id) === String(tournamentId)
+      );
+      setLeagues(filtered);
+      if (filtered.length > 0) {
         const paramLeague = searchParams.get('league');
-        const match = paramLeague && l.find(x => String(x.id) === paramLeague);
-        setLeagueId(match ? String(match.id) : String(l[0].id));
+        const match = paramLeague && filtered.find(x => String(x.id) === paramLeague);
+        setLeagueId(match ? String(match.id) : String(filtered[0].id));
       }
     };
     loadLeagues();
-  }, [apiBase, token]);
+  }, [apiBase, token, tournamentId]);
+
+  useEffect(() => {
+    if (!tournamentId) return;
+    fetch(`${apiBase}/tournaments/${tournamentId}/info`)
+      .then(r => r.json())
+      .then(t => { if (t?.name) setTournamentName(t.name); })
+      .catch(() => {});
+  }, [apiBase, tournamentId]);
 
   // When league changes, reset and auto-jump to user's page
   useEffect(() => {
@@ -40,7 +55,6 @@ function Leaderboard() {
     setData(null);
     setUserPage(null);
 
-    // Fetch page 1 first to get userRank
     const init = async () => {
       const res = await fetch(
         `${apiBase}/fantasy-teams/league/${leagueId}/leaderboard?page=1&limit=${LIMIT}`,
@@ -72,7 +86,13 @@ function Leaderboard() {
   return (
     <div className="leaderboard-page">
       <div className="panel leaderboard">
-        <h2>League Leaderboard</h2>
+        <div className="leaderboard-header-row">
+          <button className="btn-text" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
+            ← Back to Leagues
+          </button>
+          <h2>{tournamentName ? `${tournamentName} — Leaderboard` : 'League Leaderboard'}</h2>
+        </div>
+
         <div className="leaderboard-controls">
           <SearchableSelect
             options={leagues.map(l => ({ value: l.id, label: l.name }))}
@@ -82,62 +102,70 @@ function Leaderboard() {
           />
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Manager</th>
-              <th>Team</th>
-              <th>Points</th>
-              <th>Team Pts</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data && data.teams.map((t, idx) => {
-              const rank = (data.page - 1) * LIMIT + idx + 1;
-              const isUser = user && t.user_id === user.id;
-              return (
-                <tr key={t.id} className={isUser ? 'highlight-row' : ''}>
-                  <td className="rank-cell">
-                    {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-                  </td>
-                  <td>
-                    <FlagImg code={t.country_code} style={{ marginRight: 6 }} />
-                    {t.username}
-                  </td>
-                  <td>{t.team_name}</td>
-                  <td>{t.rating_points}</td>
-                  <td className={t.team_points >= 0 ? 'pts-positive' : 'pts-negative'}>
-                    {t.team_points >= 0 ? '+' : ''}{t.team_points}
-                  </td>
-                  <td><strong>{t.total_points}</strong></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        {leagues.length === 0 && (
+          <p className="muted">You are not in any leagues for this tournament.</p>
+        )}
 
-        {data && (
-          <div className="pagination">
-            <div className="pagination-nav">
-              <button className="btn-outlined small" type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                ← Prev
-              </button>
-              <span>Page {page} of {maxPage}</span>
-              <button className="btn-outlined small" type="button" onClick={() => setPage(p => Math.min(maxPage, p + 1))} disabled={page >= maxPage}>
-                Next →
-              </button>
-            </div>
-            <div className="pagination-shortcuts">
-              <button className="btn-outlined small" type="button" onClick={() => setPage(1)}>
-                Go to Top
-              </button>
-              <button className="btn-outlined small" type="button" onClick={() => setPage(userPage || 1)}>
-                Go to My Team
-              </button>
-            </div>
-          </div>
+        {leagues.length > 0 && (
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Manager</th>
+                  <th>Team</th>
+                  <th>Points</th>
+                  <th>Team Pts</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data && data.teams.map((t, idx) => {
+                  const rank = (data.page - 1) * LIMIT + idx + 1;
+                  const isUser = user && t.user_id === user.id;
+                  return (
+                    <tr key={t.id} className={isUser ? 'highlight-row' : ''}>
+                      <td className="rank-cell">
+                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+                      </td>
+                      <td>
+                        <FlagImg code={t.country_code} style={{ marginRight: 6 }} />
+                        {t.username}
+                      </td>
+                      <td>{t.team_name}</td>
+                      <td>{t.rating_points}</td>
+                      <td className={t.team_points >= 0 ? 'pts-positive' : 'pts-negative'}>
+                        {t.team_points >= 0 ? '+' : ''}{t.team_points}
+                      </td>
+                      <td><strong>{t.total_points}</strong></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {data && (
+              <div className="pagination">
+                <div className="pagination-nav">
+                  <button className="btn-outlined small" type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                    ← Prev
+                  </button>
+                  <span>Page {page} of {maxPage}</span>
+                  <button className="btn-outlined small" type="button" onClick={() => setPage(p => Math.min(maxPage, p + 1))} disabled={page >= maxPage}>
+                    Next →
+                  </button>
+                </div>
+                <div className="pagination-shortcuts">
+                  <button className="btn-outlined small" type="button" onClick={() => setPage(1)}>
+                    Go to Top
+                  </button>
+                  <button className="btn-outlined small" type="button" onClick={() => setPage(userPage || 1)}>
+                    Go to My Team
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
