@@ -104,10 +104,11 @@ router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (r
   const tournamentId = parseInt(req.params.tournamentId, 10);
 
   db.all(
-    `SELECT p.id, p.nickname, p.is_active, p.team_id, t.name as team_name
+    `SELECT p.id, p.nickname, p.is_active, pt.team_id, t.name as team_name
      FROM players p
-     LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
-     WHERE p.tournament_id = ?
+     JOIN player_tournaments pt ON pt.player_id = p.id
+     LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
+     WHERE pt.tournament_id = ?
      ORDER BY t.name, p.nickname`,
     [tournamentId],
     (err, players) => {

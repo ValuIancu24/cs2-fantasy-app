@@ -9,7 +9,6 @@ require('./database');
 
 const authRoutes = require('./routes/auth');
 const leagueRoutes = require('./routes/leagues');
-const teamRoutes = require('./routes/teams');
 const playerRoutes = require('./routes/players');
 const fantasyTeamRoutes = require('./routes/fantasyTeams');
 const adminRoutes = require('./routes/admin');
@@ -40,7 +39,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/leagues', leagueRoutes);
 app.use('/api/players', playerRoutes);
-app.use('/api/teams', teamRoutes);
 app.use('/api/fantasy-teams', fantasyTeamRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tournaments', tournamentRoutes);

@@ -259,7 +259,7 @@ function TournamentLeagues() {
                         <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
-                        <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
                       ) : (
                         <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
                       )}
@@ -332,7 +332,7 @@ function TournamentLeagues() {
                         <button className="btn-outlined small" onClick={() => navigate(`/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
-                        <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${l.id}`)}>Edit Team</button>
+                        <button className="btn-outlined small" onClick={() => navigate(`/my-team?league=${l.id}`)}>View Team</button>
                       ) : (
                         <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
                       )}
