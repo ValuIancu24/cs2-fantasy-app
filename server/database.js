@@ -126,8 +126,20 @@ function initDatabase() {
       FOREIGN KEY (player_id) REFERENCES players(id)
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS player_tournaments (
+      player_id TEXT NOT NULL,
+      tournament_id INTEGER NOT NULL,
+      team_id TEXT,
+      PRIMARY KEY (player_id, tournament_id),
+      FOREIGN KEY (player_id) REFERENCES players(id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+    )`);
+
     // Migrations — silently ignore if column already exists
     db.run(`ALTER TABLE leagues ADD COLUMN tournament_id INTEGER`, () => {});
+    // Backfill player_tournaments from existing players rows
+    db.run(`INSERT OR IGNORE INTO player_tournaments (player_id, tournament_id, team_id)
+            SELECT id, tournament_id, team_id FROM players WHERE tournament_id IS NOT NULL`, () => {});
     db.run(`ALTER TABLE leagues ADD COLUMN is_public BOOLEAN DEFAULT 1`, () => {});
     db.run(`ALTER TABLE leagues ADD COLUMN invite_code TEXT`, () => {});
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});

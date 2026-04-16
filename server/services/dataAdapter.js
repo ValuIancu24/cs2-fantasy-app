@@ -51,7 +51,7 @@ async function syncTournament(tournamentId) {
   // Second pass: retry teams that ended up with 0 players
   for (const [teamId, teamName] of teamsMap.entries()) {
     const row = await dbGet(
-      'SELECT COUNT(*) as c FROM players WHERE team_id = ? AND tournament_id = ?',
+      'SELECT COUNT(*) as c FROM player_tournaments WHERE team_id = ? AND tournament_id = ?',
       [teamId, tournamentId]
     );
     if (row.c === 0) {
@@ -60,11 +60,7 @@ async function syncTournament(tournamentId) {
         const roster = await gridApi.getTeamRoster(teamId);
         for (const edge of roster) {
           const player = edge.node;
-          await dbRun(
-            `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
-             VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
-            [player.id, player.nickname, teamId, tournamentId]
-          );
+          await upsertPlayer(player.id, player.nickname, teamId, tournamentId);
           totalPlayers++;
         }
         console.log(`[DATA ADAPTER] ${teamName}: ${roster.length} players on retry`);
@@ -91,11 +87,7 @@ async function syncRosters(teamsMap, tournamentId) {
       const roster = await gridApi.getTeamRoster(teamId);
       for (const edge of roster) {
         const player = edge.node;
-        await dbRun(
-          `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
-           VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
-          [player.id, player.nickname, teamId, tournamentId]
-        );
+        await upsertPlayer(player.id, player.nickname, teamId, tournamentId);
         total++;
       }
       console.log(`[DATA ADAPTER] ${teamName}: ${roster.length} players synced`);
@@ -176,7 +168,7 @@ async function syncTournamentStats(tournamentId) {
           const teamId = teamNameToId.get(team.name.toLowerCase());
           if (teamId) {
             const teamPlayerCount = await dbGet(
-              'SELECT COUNT(*) as c FROM players WHERE team_id = ? AND tournament_id = ?',
+              'SELECT COUNT(*) as c FROM player_tournaments WHERE team_id = ? AND tournament_id = ?',
               [teamId, tournamentId]
             );
             if (teamPlayerCount.c === 0) {
@@ -185,11 +177,7 @@ async function syncTournamentStats(tournamentId) {
                 const roster = await gridApi.getTeamRoster(teamId);
                 for (const edge of roster) {
                   const p = edge.node;
-                  await dbRun(
-                    `INSERT OR REPLACE INTO players (id, nickname, team_id, tournament_id, is_active, last_synced)
-                     VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`,
-                    [p.id, p.nickname, teamId, tournamentId]
-                  );
+                  await upsertPlayer(p.id, p.nickname, teamId, tournamentId);
                 }
                 console.log(`[DATA ADAPTER] Auto-fetched ${roster.length} players for "${team.name}"`);
               } catch (e) {
@@ -242,10 +230,12 @@ async function syncTournamentStats(tournamentId) {
 
 // Find a player by: 1) Grid API ID, 2) case-insensitive nickname, 3) alias
 async function findPlayer(player, tournamentId) {
-  // 1. Match by Grid API player ID (stored during roster sync)
+  // 1. Match by Grid API player ID
   if (player.id) {
     const byId = await dbGet(
-      'SELECT id FROM players WHERE id = ? AND tournament_id = ?',
+      `SELECT p.id FROM players p
+       JOIN player_tournaments pt ON pt.player_id = p.id
+       WHERE p.id = ? AND pt.tournament_id = ?`,
       [String(player.id), tournamentId]
     );
     if (byId) return byId;
@@ -253,7 +243,9 @@ async function findPlayer(player, tournamentId) {
 
   // 2. Case-insensitive nickname match
   const byNick = await dbGet(
-    'SELECT id FROM players WHERE LOWER(nickname) = LOWER(?) AND tournament_id = ?',
+    `SELECT p.id FROM players p
+     JOIN player_tournaments pt ON pt.player_id = p.id
+     WHERE LOWER(p.nickname) = LOWER(?) AND pt.tournament_id = ?`,
     [player.name, tournamentId]
   );
   if (byNick) return byNick;
@@ -262,10 +254,29 @@ async function findPlayer(player, tournamentId) {
   const byAlias = await dbGet(
     `SELECT p.id FROM players p
      JOIN player_aliases pa ON pa.player_id = p.id
-     WHERE LOWER(pa.alias) = LOWER(?) AND p.tournament_id = ?`,
+     JOIN player_tournaments pt ON pt.player_id = p.id
+     WHERE LOWER(pa.alias) = LOWER(?) AND pt.tournament_id = ?`,
     [player.name, tournamentId]
   );
   return byAlias || null;
+}
+
+// Insert player if not exists (preserving is_active), then upsert tournament association
+async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
+  await dbRun(
+    `INSERT OR IGNORE INTO players (id, nickname, is_active, last_synced)
+     VALUES (?, ?, 1, CURRENT_TIMESTAMP)`,
+    [playerId, nickname]
+  );
+  await dbRun(
+    `UPDATE players SET nickname = ?, last_synced = CURRENT_TIMESTAMP WHERE id = ?`,
+    [nickname, playerId]
+  );
+  await dbRun(
+    `INSERT OR REPLACE INTO player_tournaments (player_id, tournament_id, team_id)
+     VALUES (?, ?, ?)`,
+    [playerId, tournamentId, teamId]
+  );
 }
 
 async function recalculateFantasyPoints(tournamentId) {
