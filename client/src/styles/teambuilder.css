@@ -129,6 +129,20 @@
   flex: 1;
 }
 
+.tb-chip-price {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #a78bfa;
+  white-space: nowrap;
+}
+
+.player-price {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a78bfa;
+  margin-top: 0.2rem;
+}
+
 @media (max-width: 900px) {
   .teambuilder {
     grid-template-columns: 1fr;

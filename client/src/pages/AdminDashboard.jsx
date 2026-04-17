@@ -17,6 +17,7 @@ function AdminDashboard() {
   const [tournamentFetching, setTournamentFetching] = useState(false);
   const [tournamentSyncing, setTournamentSyncing] = useState(false);
   const [statsSyncing, setStatsSyncing] = useState(false);
+  const [pricesCalculating, setPricesCalculating] = useState(false);
   const [tournamentMessage, setTournamentMessage] = useState('');
 
   // Player management
@@ -39,6 +40,13 @@ function AdminDashboard() {
   // Manage tournaments
   const [allTournaments, setAllTournaments] = useState([]);
   const [tournamentStatusMsg, setTournamentStatusMsg] = useState('');
+
+  // Price breakdown
+  const [breakdownTournamentId, setBreakdownTournamentId] = useState('');
+  const [breakdownData, setBreakdownData] = useState(null);
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
+  const [breakdownMessage, setBreakdownMessage] = useState('');
+  const [expandedBreakdown, setExpandedBreakdown] = useState(null);
 
   // Wipe
   const [wiping, setWiping] = useState(false);
@@ -143,6 +151,28 @@ function AdminDashboard() {
     }
   };
 
+  const calculatePrices = async () => {
+    if (!tournamentId.trim()) return;
+    setPricesCalculating(true);
+    setTournamentMessage('');
+    try {
+      const res = await fetch(`${apiBase}/admin/calculate-prices/${tournamentId.trim()}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTournamentMessage(data.message || 'Price calculation failed');
+      } else {
+        setTournamentMessage(`✅ Prices calculated for ${data.calculated} players`);
+      }
+    } catch {
+      setTournamentMessage('Eroare de rețea');
+    } finally {
+      setPricesCalculating(false);
+    }
+  };
+
   const syncStats = async () => {
     if (!tournamentId.trim()) return;
     setStatsSyncing(true);
@@ -194,6 +224,33 @@ function AdminDashboard() {
       setBannerMessage('Eroare de rețea');
     } finally {
       setBannerSaving(false);
+    }
+  };
+
+  // ── Price Breakdown ───────────────────────────────────────────────────────
+
+  const loadPriceBreakdown = async () => {
+    if (!breakdownTournamentId.trim()) return;
+    setBreakdownLoading(true);
+    setBreakdownMessage('');
+    setBreakdownData(null);
+    setExpandedBreakdown(null);
+    try {
+      const res = await fetch(`${apiBase}/admin/tournament/${breakdownTournamentId.trim()}/price-breakdown`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBreakdownMessage(data.message || 'Failed to load breakdown');
+      } else if (data.players.length === 0) {
+        setBreakdownMessage('No active players found for this tournament.');
+      } else {
+        setBreakdownData(data);
+      }
+    } catch {
+      setBreakdownMessage('Eroare de rețea');
+    } finally {
+      setBreakdownLoading(false);
     }
   };
 
@@ -372,6 +429,17 @@ function AdminDashboard() {
                 title="Sincronizează statisticile meciurilor terminate și recalculează punctele fantasy"
               >
                 {statsSyncing ? 'Sync stats...' : 'Sync Stats'}
+              </button>
+            )}
+            {tournamentId && (
+              <button
+                type="button"
+                className="btn-outlined small"
+                onClick={calculatePrices}
+                disabled={pricesCalculating}
+                title="Recalculează prețurile jucătorilor din turneul activ pe baza istoricului"
+              >
+                {pricesCalculating ? 'Calculating...' : 'Calculate Prices'}
               </button>
             )}
           </div>
@@ -668,6 +736,138 @@ function AdminDashboard() {
             ))}
           </tbody>
         </table>
+      </section>
+
+      {/* ── Price Breakdown ── */}
+      <section className="panel price-breakdown-panel">
+        <h2>Player Price Breakdown</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          Detalii despre cum a fost calculat prețul fiecărui jucător activ din turneu.
+        </p>
+        <div className="scenario-row" style={{ marginBottom: '0.75rem' }}>
+          <input
+            type="number"
+            placeholder="Tournament ID"
+            value={breakdownTournamentId}
+            onChange={e => setBreakdownTournamentId(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && loadPriceBreakdown()}
+            style={{ width: '160px' }}
+          />
+          <button type="button" className="btn-outlined small" onClick={loadPriceBreakdown} disabled={breakdownLoading}>
+            {breakdownLoading ? 'Se încarcă...' : 'Load Breakdown'}
+          </button>
+        </div>
+
+        {breakdownMessage && <p className="info-text">{breakdownMessage}</p>}
+
+        {breakdownData && (
+          <>
+            <div className="breakdown-roster-summary">
+              <span className="muted" style={{ fontSize: '0.8rem' }}>
+                {breakdownData.players.length} jucători activi &nbsp;·&nbsp;
+                Min score: <strong>{breakdownData.min_score?.toFixed(2) ?? '—'}</strong> &nbsp;·&nbsp;
+                Max score: <strong>{breakdownData.max_score?.toFixed(2) ?? '—'}</strong>
+              </span>
+            </div>
+
+            <div className="breakdown-player-list">
+              {breakdownData.players.map(player => {
+                const isOpen = expandedBreakdown === player.id;
+                const range = breakdownData.max_score - breakdownData.min_score;
+                return (
+                  <div key={player.id} className="breakdown-player-row">
+                    <div
+                      className="breakdown-player-header"
+                      onClick={() => setExpandedBreakdown(isOpen ? null : player.id)}
+                    >
+                      <span className="breakdown-player-name">{player.nickname}</span>
+                      <span className="muted breakdown-player-team">{player.team_name}</span>
+                      <span className="breakdown-score muted">
+                        {player.score !== null ? `score: ${player.score.toFixed(2)}` : 'no history'}
+                      </span>
+                      <span className="breakdown-price">{Math.round((player.price || 190000) / 1000)}K</span>
+                      <span className="breakdown-chevron">{isOpen ? '▴' : '▾'}</span>
+                    </div>
+
+                    {isOpen && (
+                      <div className="breakdown-detail">
+                        {player.tournaments_used.length === 0 ? (
+                          <p className="muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0' }}>
+                            Niciun turneu anterior — preț implicit 190K.
+                          </p>
+                        ) : (
+                          <>
+                            {player.tournaments_used.map((t, idx) => {
+                              const weight = player.tournaments_used.length === 1 ? 1 : idx === 0 ? 0.65 : 0.35;
+                              return (
+                                <div key={t.id} className="breakdown-tournament-block">
+                                  <div className="breakdown-tournament-title">
+                                    {t.name}
+                                    <span className="breakdown-weight">{Math.round(weight * 100)}% weight</span>
+                                    <span className="muted" style={{ fontSize: '0.78rem' }}>avg: {t.avg.toFixed(2)} pts/series</span>
+                                  </div>
+                                  <table className="breakdown-series-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Meci</th>
+                                        <th>Format</th>
+                                        <th>Data</th>
+                                        <th>Pts</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {t.series.map(s => (
+                                        <tr key={s.series_id}>
+                                          <td className="muted">
+                                            {s.team1_name && s.team2_name
+                                              ? `${s.team1_name} vs ${s.team2_name}`
+                                              : `Series ${s.series_id.slice(0, 8)}`}
+                                          </td>
+                                          <td className="muted">{s.format || '—'}</td>
+                                          <td className="muted">
+                                            {s.scheduled_at
+                                              ? new Date(s.scheduled_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
+                                              : '—'}
+                                          </td>
+                                          <td className={s.pts >= 0 ? 'pts-pos' : 'pts-neg'}>
+                                            {s.pts >= 0 ? '+' : ''}{s.pts}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              );
+                            })}
+
+                            <div className="breakdown-formula">
+                              {player.tournaments_used.length === 2 ? (
+                                <span>
+                                  Weighted avg: {player.tournaments_used[0].avg.toFixed(2)} × 0.65 + {player.tournaments_used[1].avg.toFixed(2)} × 0.35 = <strong>{player.score.toFixed(2)}</strong>
+                                </span>
+                              ) : (
+                                <span>Avg (1 turneu): <strong>{player.score.toFixed(2)}</strong></span>
+                              )}
+                              <span className="breakdown-formula-price">
+                                {range > 0 ? (
+                                  <>
+                                    170K + ({player.score.toFixed(2)} − {breakdownData.min_score.toFixed(2)}) / ({breakdownData.max_score.toFixed(2)} − {breakdownData.min_score.toFixed(2)}) × 70K = <strong>{Math.round((player.price || 190000) / 1000)}K</strong>
+                                  </>
+                                ) : (
+                                  <>Toți jucătorii au același scor → <strong>205K</strong></>
+                                )}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
 
       {/* ── Danger Zone ── */}

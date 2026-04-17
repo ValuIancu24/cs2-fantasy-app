@@ -146,6 +146,9 @@ function initDatabase() {
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
     db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER DEFAULT 0`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN banner_url TEXT`, () => {});
+    db.run(`ALTER TABLE players ADD COLUMN price INTEGER DEFAULT 190000`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN start_date TEXT`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});
 
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {

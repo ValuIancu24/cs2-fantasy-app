@@ -2,6 +2,25 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 
+function formatTournamentDates(startDate, endDate) {
+  if (!startDate) return null;
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  const fmt = (d, opts) => d.toLocaleDateString('en-GB', opts);
+  const startDay = start.getDate();
+  const startMonth = fmt(start, { month: 'short' });
+  const startYear = start.getFullYear();
+  if (!end) return `${startDay} ${startMonth} ${startYear}`;
+  const endDay = end.getDate();
+  const endMonth = fmt(end, { month: 'short' });
+  const endYear = end.getFullYear();
+  if (startMonth === endMonth && startYear === endYear)
+    return `${startDay}–${endDay} ${startMonth} ${startYear}`;
+  if (startYear === endYear)
+    return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${startYear}`;
+  return `${startDay} ${startMonth} ${startYear} – ${endDay} ${endMonth} ${endYear}`;
+}
+
 import '../styles/myfantasy.css';
 import '../styles/finished-tournaments.css';
 
@@ -60,11 +79,16 @@ function FinishedTournaments() {
                 {t.name_short && t.name_short !== t.name && (
                   <p className="tournament-card-short">{t.name_short}</p>
                 )}
+                {formatTournamentDates(t.start_date, t.end_date) && (
+                  <p className="muted tournament-card-meta">
+                    {formatTournamentDates(t.start_date, t.end_date)}
+                  </p>
+                )}
                 {isAdmin && (
                   <p className="muted tournament-card-meta">
                     ID: {t.id}
                     {t.last_synced && (
-                      <> · Synced {new Date(t.last_synced).toLocaleDateString('ro-RO')}</>
+                      <> · Synced {new Date(t.last_synced).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</>
                     )}
                   </p>
                 )}

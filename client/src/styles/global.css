@@ -126,6 +126,12 @@ button {
   background: #8a2ad8;
 }
 
+.btn-primary:disabled {
+  background: rgba(115, 21, 188, 0.25);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+}
+
 .btn-outlined {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.25);

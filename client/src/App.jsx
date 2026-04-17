@@ -47,9 +47,9 @@ function NavLinks({ user }) {
         <>
           <Link to="/my-fantasy">My Fantasy</Link>
           <Link to="/finished-tournaments">Ended Tournaments</Link>
-          <Link to="/leagues">Leagues</Link>
           {tournamentId && (
             <>
+              <Link to={`/tournament/${tournamentId}/leagues`}>Leagues</Link>
               <Link to={`/tournament/${tournamentId}/my-team`}>My Team</Link>
               <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
             </>

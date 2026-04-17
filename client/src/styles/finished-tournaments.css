@@ -1,3 +1,19 @@
+.ft-active-ribbon {
+  position: absolute;
+  top: 12px;
+  right: -6px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.65rem;
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  z-index: 2;
+}
+
 .ft-finished-ribbon {
   position: absolute;
   top: 12px;
