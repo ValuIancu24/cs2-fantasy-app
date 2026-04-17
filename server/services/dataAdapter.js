@@ -20,10 +20,18 @@ async function syncTournament(tournamentId) {
   const tournamentName = firstMatch.tournament.name;
   const tournamentNameShort = firstMatch.tournament.nameShortened;
 
+  // Find earliest and latest match dates
+  const matchDates = matchesData.edges
+    .map(e => e.node.startTimeScheduled)
+    .filter(Boolean)
+    .sort();
+  const startDate = matchDates[0] || null;
+  const endDate = matchDates[matchDates.length - 1] || null;
+
   await dbRun(
-    `INSERT OR REPLACE INTO tournaments (id, name, name_short, status, last_synced)
-     VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)`,
-    [tournamentId, tournamentName, tournamentNameShort]
+    `INSERT OR REPLACE INTO tournaments (id, name, name_short, status, start_date, end_date, last_synced)
+     VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)`,
+    [tournamentId, tournamentName, tournamentNameShort, startDate, endDate]
   );
   console.log(`[DATA ADAPTER] Tournament "${tournamentName}" saved`);
 
@@ -279,6 +287,113 @@ async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
   );
 }
 
+async function calculatePrices(tournamentId) {
+  console.log(`[DATA ADAPTER] Calculating prices for tournament ${tournamentId}...`);
+
+  // Reset all players in this tournament to default price
+  await dbRun(
+    `UPDATE players SET price = 190000 WHERE id IN (
+       SELECT player_id FROM player_tournaments WHERE tournament_id = ?
+     )`,
+    [tournamentId]
+  );
+
+  // Only calculate for active players — inactive ones keep the 190000 default
+  const players = await dbAll(
+    `SELECT pt.player_id FROM player_tournaments pt
+     JOIN players p ON p.id = pt.player_id
+     WHERE pt.tournament_id = ? AND p.is_active = 1`,
+    [tournamentId]
+  );
+
+  if (players.length === 0) {
+    console.log(`[DATA ADAPTER] No active players found for tournament ${tournamentId}`);
+    return { success: true, calculated: 0 };
+  }
+
+  const scores = new Map();
+
+  for (const { player_id } of players) {
+    // Get last 2 historical tournaments this player has stats in (excluding current)
+    const historicalTournaments = await dbAll(
+      `SELECT DISTINCT ps.tournament_id
+       FROM player_stats ps
+       JOIN tournaments t ON t.id = ps.tournament_id
+       WHERE ps.player_id = ? AND t.status = 'historical' AND t.id != ?
+         AND COALESCE(t.start_date, t.last_synced) < COALESCE(
+           (SELECT start_date FROM tournaments WHERE id = ?),
+           (SELECT last_synced FROM tournaments WHERE id = ?)
+         )
+       ORDER BY COALESCE(t.start_date, t.last_synced) DESC
+       LIMIT 2`,
+      [player_id, tournamentId, tournamentId, tournamentId]
+    );
+
+    if (historicalTournaments.length === 0) {
+      scores.set(player_id, null);
+      continue;
+    }
+
+    // Compute avg pts per series for each tournament
+    const tournamentAvgs = [];
+    for (const { tournament_id } of historicalTournaments) {
+      const seriesStats = await dbAll(
+        `SELECT
+           SUM(kills) * 2 + SUM(assists) - SUM(deaths) +
+           (CASE WHEN MAX(team_win) = 1 THEN 15 ELSE -15 END) as pts
+         FROM player_stats
+         WHERE player_id = ? AND tournament_id = ?
+         GROUP BY series_id`,
+        [player_id, tournament_id]
+      );
+      if (seriesStats.length === 0) continue;
+      const avg = seriesStats.reduce((s, r) => s + (r.pts || 0), 0) / seriesStats.length;
+      tournamentAvgs.push(avg);
+    }
+
+    if (tournamentAvgs.length === 0) {
+      scores.set(player_id, null);
+      continue;
+    }
+
+    // Weighted average: most recent = 65%, older = 35%
+    // tournamentAvgs[0] = most recent (ORDER BY last_synced DESC)
+    let score;
+    if (tournamentAvgs.length === 1) {
+      score = tournamentAvgs[0];
+    } else {
+      score = tournamentAvgs[0] * 0.65 + tournamentAvgs[1] * 0.35;
+    }
+
+    scores.set(player_id, score);
+  }
+
+  const validScores = [...scores.values()].filter(s => s !== null);
+  const minScore = validScores.length > 0 ? Math.min(...validScores) : 0;
+  const maxScore = validScores.length > 0 ? Math.max(...validScores) : 0;
+  const range = maxScore - minScore;
+
+  let calculated = 0;
+  for (const { player_id } of players) {
+    const score = scores.get(player_id);
+    let price;
+
+    if (score === null || validScores.length === 0) {
+      price = 190000;
+    } else if (range === 0) {
+      price = 205000;
+    } else {
+      price = Math.round(170000 + (score - minScore) / range * 70000);
+    }
+
+    await dbRun(`UPDATE players SET price = ? WHERE id = ?`, [price, player_id]);
+    calculated++;
+  }
+
+  console.log(`[DATA ADAPTER] ✅ Prices calculated for ${calculated} players (min score: ${minScore?.toFixed(1)}, max: ${maxScore?.toFixed(1)})`);
+  return { success: true, calculated, minScore, maxScore };
+}
+
 async function recalculateFantasyPoints(tournamentId) {
   console.log(`[DATA ADAPTER] Recalculating fantasy points for tournament ${tournamentId}...`);
 
@@ -347,9 +462,75 @@ function dbAll(sql, params = []) {
   });
 }
 
+async function getPriceBreakdown(tournamentId) {
+  const players = await dbAll(
+    `SELECT p.id, p.nickname, p.price, t.name AS team_name
+     FROM players p
+     JOIN player_tournaments pt ON pt.player_id = p.id
+     LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
+     WHERE pt.tournament_id = ? AND p.is_active = 1
+     ORDER BY t.name, p.nickname`,
+    [tournamentId]
+  );
+
+  const result = [];
+
+  for (const player of players) {
+    const historicalTournaments = await dbAll(
+      `SELECT DISTINCT ps.tournament_id, t.name AS tournament_name
+       FROM player_stats ps
+       JOIN tournaments t ON t.id = ps.tournament_id
+       WHERE ps.player_id = ? AND t.status = 'historical' AND t.id != ?
+         AND COALESCE(t.start_date, t.last_synced) < COALESCE(
+           (SELECT start_date FROM tournaments WHERE id = ?),
+           (SELECT last_synced FROM tournaments WHERE id = ?)
+         )
+       ORDER BY COALESCE(t.start_date, t.last_synced) DESC
+       LIMIT 2`,
+      [player.id, tournamentId, tournamentId, tournamentId]
+    );
+
+    const tournamentsUsed = [];
+    for (const { tournament_id, tournament_name } of historicalTournaments) {
+      const seriesStats = await dbAll(
+        `SELECT ps.series_id,
+                SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) +
+                (CASE WHEN MAX(ps.team_win) = 1 THEN 15 ELSE -15 END) as pts,
+                sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at
+         FROM player_stats ps
+         LEFT JOIN series_cache sc ON sc.id = ps.series_id
+         WHERE ps.player_id = ? AND ps.tournament_id = ?
+         GROUP BY ps.series_id
+         ORDER BY sc.scheduled_at ASC`,
+        [player.id, tournament_id]
+      );
+      if (seriesStats.length === 0) continue;
+      const avg = seriesStats.reduce((s, r) => s + (r.pts || 0), 0) / seriesStats.length;
+      tournamentsUsed.push({ id: tournament_id, name: tournament_name, series: seriesStats, avg });
+    }
+
+    let score = null;
+    if (tournamentsUsed.length === 1) {
+      score = tournamentsUsed[0].avg;
+    } else if (tournamentsUsed.length >= 2) {
+      score = tournamentsUsed[0].avg * 0.65 + tournamentsUsed[1].avg * 0.35;
+    }
+
+    result.push({ ...player, score, tournaments_used: tournamentsUsed });
+  }
+
+  const validScores = result.map(p => p.score).filter(s => s !== null);
+  const minScore = validScores.length > 0 ? Math.min(...validScores) : null;
+  const maxScore = validScores.length > 0 ? Math.max(...validScores) : null;
+
+  return { players: result, min_score: minScore, max_score: maxScore };
+}
+
 module.exports = {
   syncTournament,
   syncTournamentStats,
   recalculateFantasyPoints,
+  calculatePrices,
+  getPriceBreakdown,
   calculateSeriesPoints
 };

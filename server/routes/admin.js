@@ -13,7 +13,7 @@ const bannerStorage = multer.diskStorage({
   destination: path.join(__dirname, '..', '..', 'client', 'public', 'uploads', 'banners'),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `tournament_${req.params.id}${ext}`);
+    cb(null, `tournament_${req.params.id}_${Date.now()}${ext}`);
   }
 });
 const uploadBanner = multer({
@@ -94,6 +94,29 @@ router.post('/sync-stats/:tournamentId', authMiddleware, requireAdmin, async (re
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || 'Stats sync failed' });
+  }
+});
+
+router.get('/tournament/:tournamentId/price-breakdown', authMiddleware, requireAdmin, async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+  try {
+    const result = await dataAdapter.getPriceBreakdown(tournamentId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Failed to get price breakdown' });
+  }
+});
+
+router.post('/calculate-prices/:tournamentId', authMiddleware, requireAdmin, async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  try {
+    const result = await dataAdapter.calculatePrices(tournamentId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Price calculation failed' });
   }
 });
 
@@ -200,7 +223,7 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
 // GET all tournaments (for admin management)
 router.get('/tournaments', authMiddleware, requireAdmin, (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY last_synced DESC`,
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY COALESCE(start_date, last_synced) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -240,6 +263,10 @@ router.delete('/tournaments/:id', authMiddleware, requireAdmin, (req, res) => {
     db.run('DELETE FROM series_cache WHERE tournament_id = ?', [id]);
     db.run('DELETE FROM player_tournaments WHERE tournament_id = ?', [id]);
     db.run('DELETE FROM teams WHERE tournament_id = ?', [id]);
+    // Delete fantasy teams and league members for leagues of this tournament
+    db.run('DELETE FROM fantasy_teams WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id]);
+    db.run('DELETE FROM league_members WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id]);
+    db.run('DELETE FROM leagues WHERE tournament_id = ?', [id]);
     db.run('DELETE FROM tournaments WHERE id = ?', [id], function (err) {
       if (err) return res.status(500).json({ message: 'Database error' });
       if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });

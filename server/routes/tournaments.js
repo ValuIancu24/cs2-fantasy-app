@@ -7,9 +7,9 @@ const router = express.Router();
 // GET /api/tournaments/active
 router.get('/active', (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments
+    `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
      WHERE status = 'active' AND (is_visible IS NULL OR is_visible = 1)
-     ORDER BY last_synced DESC`,
+     ORDER BY COALESCE(start_date, last_synced) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -21,9 +21,9 @@ router.get('/active', (req, res) => {
 // GET /api/tournaments/historical
 router.get('/historical', authMiddleware, (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, last_synced, banner_url FROM tournaments
+    `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
      WHERE status = 'historical' AND is_visible = 1
-     ORDER BY last_synced DESC`,
+     ORDER BY COALESCE(start_date, last_synced) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });

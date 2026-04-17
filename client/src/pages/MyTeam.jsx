@@ -6,10 +6,12 @@ import '../styles/myteam.css';
 
 function formatDate(isoString) {
   if (!isoString) return null;
-  return new Date(isoString).toLocaleDateString('ro-RO', {
+  return new Date(isoString).toLocaleString('ro-RO', {
     timeZone: 'Europe/Bucharest',
     day: '2-digit',
-    month: 'short'
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
   });
 }
 
@@ -199,7 +201,7 @@ function MyTeam() {
                 {player.series.map((s, i) => {
                   const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
                   return (
-                    <div key={s.series_id} className="myteam-series-row">
+                    <div key={s.series_id} className={`myteam-series-row ${s.upcoming ? 'upcoming' : ''}`}>
                       <div className="myteam-series-info">
                         <span className="myteam-series-matchup">{matchup}</span>
                         <span className="muted myteam-series-meta">
@@ -207,21 +209,25 @@ function MyTeam() {
                           {s.scheduled_at ? ` · ${formatDate(s.scheduled_at)}` : ''}
                         </span>
                       </div>
-                      <div className="myteam-series-stats">
-                        <span className="stat-kda">
-                          <span className="stat-k">{s.kills}K</span>
-                          {' / '}
-                          <span className="stat-d">{s.deaths}D</span>
-                          {' / '}
-                          <span className="stat-a">{s.assists}A</span>
-                        </span>
-                        <span className={`myteam-series-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                          {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
-                        </span>
-                        <span className={`myteam-series-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`} title="Team Points">
-                          {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
-                        </span>
-                      </div>
+                      {s.upcoming ? (
+                        <span className="myteam-upcoming-badge">Upcoming</span>
+                      ) : (
+                        <div className="myteam-series-stats">
+                          <span className="stat-kda">
+                            <span className="stat-k">{s.kills}K</span>
+                            {' / '}
+                            <span className="stat-d">{s.deaths}D</span>
+                            {' / '}
+                            <span className="stat-a">{s.assists}A</span>
+                          </span>
+                          <span className={`myteam-series-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
+                            {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                          </span>
+                          <span className={`myteam-series-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`} title="Team Points">
+                            {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -254,26 +260,32 @@ function MyTeam() {
                 {allSeriesEntries.map((s, i) => {
                   const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
                   return (
-                    <div key={`${s.player.id}-${s.series_id}`} className="myteam-timeline-card">
+                    <div key={`${s.player.id}-${s.series_id}`} className={`myteam-timeline-card ${s.upcoming ? 'upcoming' : ''}`}>
                       <div className="myteam-timeline-player">{s.player.nickname}</div>
                       <div className="myteam-timeline-matchup">{matchup}</div>
                       <div className="myteam-timeline-meta muted">
                         {s.format || ''}
                         {s.scheduled_at ? ` · ${formatDate(s.scheduled_at)}` : ''}
                       </div>
-                      <div className="myteam-timeline-kda">
-                        <span className="stat-k">{s.kills}K</span>
-                        {' / '}
-                        <span className="stat-d">{s.deaths}D</span>
-                        {' / '}
-                        <span className="stat-a">{s.assists}A</span>
-                      </div>
-                      <div className={`myteam-timeline-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                        {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
-                      </div>
-                      <div className={`myteam-timeline-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`}>
-                        {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
-                      </div>
+                      {s.upcoming ? (
+                        <span className="myteam-upcoming-badge">Upcoming</span>
+                      ) : (
+                        <>
+                          <div className="myteam-timeline-kda">
+                            <span className="stat-k">{s.kills}K</span>
+                            {' / '}
+                            <span className="stat-d">{s.deaths}D</span>
+                            {' / '}
+                            <span className="stat-a">{s.assists}A</span>
+                          </div>
+                          <div className={`myteam-timeline-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
+                            {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                          </div>
+                          <div className={`myteam-timeline-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`}>
+                            {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })}

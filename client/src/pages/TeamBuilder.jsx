@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App.jsx';
 import '../styles/teambuilder.css';
 
+const BUDGET_CAP = 1_000_000;
+
+function formatPrice(price) {
+  return `${Math.round((price ?? 190000) / 1000)}K`;
+}
+
 function TeamBuilder() {
   const { leagueId } = useParams();
   const { apiBase } = useContext(AuthContext);
@@ -13,12 +19,13 @@ function TeamBuilder() {
   const [filter, setFilter] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [tournamentId, setTournamentId] = useState(null);
 
   const token = localStorage.getItem('cs2_fantasy_token');
 
   useEffect(() => {
     const load = async () => {
-      // Check if the tournament is finished — if so, redirect to view-only
+      // Check if the tournament is finished — redirect to view-only
       const leaguesRes = await fetch(`${apiBase}/leagues`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -29,6 +36,7 @@ function TeamBuilder() {
           navigate(`/tournament/${thisLeague.tournament_id}/my-team?league=${leagueId}`, { replace: true });
           return;
         }
+        setTournamentId(thisLeague?.tournament_id || null);
       }
 
       // Fetch players for this league's tournament
@@ -62,12 +70,22 @@ function TeamBuilder() {
     return counts;
   }, [selected, players]);
 
+  const totalSpent = useMemo(() =>
+    selected.reduce((sum, id) => {
+      const p = players.find(pl => String(pl.id) === id);
+      return sum + (p?.price || 190000);
+    }, 0)
+  , [selected, players]);
+
+  const budgetLeft = BUDGET_CAP - totalSpent;
+
   const canSelect = player => {
     const id = String(player.id);
     if (selected.includes(id)) return true;
     if (selected.length >= 5) return false;
     const count = teamCounts[player.team_name] || 0;
     if (count >= 2) return false;
+    if (totalSpent + (player.price || 190000) > BUDGET_CAP) return false;
     return true;
   };
 
@@ -108,6 +126,10 @@ function TeamBuilder() {
       setError('Team name is required');
       return;
     }
+    if (totalSpent > BUDGET_CAP) {
+      setError('Budget exceeded');
+      return;
+    }
 
     const existingRes = await fetch(`${apiBase}/fantasy-teams/${leagueId}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -133,7 +155,12 @@ function TeamBuilder() {
     if (!res.ok) {
       setError(data.message || 'Failed to save team');
     } else {
-      navigate(`/my-team?league=${leagueId}`, { replace: true });
+      navigate(
+        tournamentId
+          ? `/tournament/${tournamentId}/my-team?league=${leagueId}`
+          : '/my-fantasy',
+        { replace: true }
+      );
     }
   };
 
@@ -162,6 +189,17 @@ function TeamBuilder() {
           Numele trebuie să fie unic în această ligă.
         </p>
 
+        <div className="budget-row">
+          <span>Budget:</span>
+          <span className={totalSpent > BUDGET_CAP ? 'bad' : ''}>
+            {formatPrice(totalSpent)} / {formatPrice(BUDGET_CAP)}
+          </span>
+          {budgetLeft >= 0
+            ? <span className="muted">({formatPrice(budgetLeft)} left)</span>
+            : <span className="bad">Over budget!</span>
+          }
+        </div>
+
         <p className="muted">Pick exactly 5 players · Max 2 per real team</p>
 
         {selected.length > 0 && (
@@ -170,6 +208,7 @@ function TeamBuilder() {
               <div key={p.id} className="tb-selected-chip">
                 <span>{p.nickname}</span>
                 <span className="muted" style={{ fontSize: '0.75rem' }}>{p.team_name}</span>
+                <span className="tb-chip-price">{formatPrice(p.price)}</span>
                 <button className="btn-text small" onClick={() => togglePlayer(p)}>✕</button>
               </div>
             ))}
@@ -182,7 +221,7 @@ function TeamBuilder() {
 
         {error && <div className="error-text">{error}</div>}
         {success && <div className="success-text">{success}</div>}
-        <button className="btn-primary" onClick={saveTeam} disabled={selected.length !== 5 || !teamName.trim()}>
+        <button className="btn-primary" onClick={saveTeam} disabled={selected.length !== 5 || !teamName.trim() || totalSpent > BUDGET_CAP}>
           Save Team
         </button>
       </div>
@@ -222,6 +261,7 @@ function TeamBuilder() {
                         <div className="name-row">
                           <span>{p.nickname}</span>
                         </div>
+                        <div className="player-price">{formatPrice(p.price)}</div>
                       </div>
                     </button>
                   );

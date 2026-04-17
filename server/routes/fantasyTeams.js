@@ -209,6 +209,19 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
           let remaining = lineup.length;
           const results = [];
 
+          const finalize = () => {
+            const ordered = lineup.map(id => results.find(r => String(r.id) === String(id))).filter(Boolean);
+            const totalRating = ordered.reduce((sum, p) => sum + p.rating_points, 0);
+            const totalTeam = ordered.reduce((sum, p) => sum + p.team_points, 0);
+            res.json({
+              team_name: team.team_name,
+              rating_points: totalRating,
+              team_points: totalTeam,
+              total_points: totalRating + totalTeam,
+              lineup: ordered
+            });
+          };
+
           lineup.forEach(playerId => {
             // Per-series breakdown for this player
             db.all(
@@ -230,36 +243,62 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                ORDER BY sc.scheduled_at ASC`,
               [playerId, tournamentId],
               (err, seriesRows) => {
-                const series = (err ? [] : (seriesRows || [])).map(s => ({
+                const played = (err ? [] : (seriesRows || [])).map(s => ({
                   ...s,
+                  upcoming: false,
                   team_points: s.team_win === 1 ? 15 : -15
                 }));
-                const kdaPoints = series.reduce((sum, s) => sum + (s.series_points || 0), 0);
-                const teamPoints = series.reduce((sum, s) => sum + s.team_points, 0);
+
                 const playerInfo = playerMap[String(playerId)] || { id: playerId, nickname: playerId, team_name: null };
+                const teamName = playerInfo.team_name;
 
-                results.push({
-                  ...playerInfo,
-                  rating_points: kdaPoints,
-                  team_points: teamPoints,
-                  total_points: kdaPoints + teamPoints,
-                  series
-                });
-
-                remaining--;
-                if (remaining === 0) {
-                  // Re-order results to match lineup order
-                  const ordered = lineup.map(id => results.find(r => String(r.id) === String(id))).filter(Boolean);
-                  const totalRating = ordered.reduce((sum, p) => sum + p.rating_points, 0);
-                  const totalTeam = ordered.reduce((sum, p) => sum + p.team_points, 0);
-                  res.json({
-                    team_name: team.team_name,
-                    rating_points: totalRating,
-                    team_points: totalTeam,
-                    total_points: totalRating + totalTeam,
-                    lineup: ordered
-                  });
+                if (!teamName) {
+                  const kdaPoints = played.reduce((sum, s) => sum + (s.series_points || 0), 0);
+                  const teamPoints = played.reduce((sum, s) => sum + s.team_points, 0);
+                  results.push({ ...playerInfo, rating_points: kdaPoints, team_points: teamPoints, total_points: kdaPoints + teamPoints, series: played });
+                  remaining--;
+                  if (remaining === 0) finalize();
+                  return;
                 }
+
+                // Fetch upcoming series for this player's team (not yet played, no TBD teams)
+                db.all(
+                  `SELECT sc.id AS series_id, sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at
+                   FROM series_cache sc
+                   WHERE sc.tournament_id = ?
+                     AND (LOWER(sc.team1_name) = LOWER(?) OR LOWER(sc.team2_name) = LOWER(?))
+                     AND sc.team1_name NOT LIKE '%TBD%'
+                     AND sc.team2_name NOT LIKE '%TBD%'
+                     AND sc.id NOT IN (
+                       SELECT DISTINCT series_id FROM player_stats
+                       WHERE player_id = ? AND tournament_id = ?
+                     )
+                   ORDER BY sc.scheduled_at ASC`,
+                  [tournamentId, teamName, teamName, playerId, tournamentId],
+                  (err2, upcomingRows) => {
+                    const upcoming = (err2 ? [] : (upcomingRows || [])).map(s => ({
+                      ...s,
+                      upcoming: true,
+                      kills: null, deaths: null, assists: null,
+                      series_points: null, team_win: null, team_points: null
+                    }));
+
+                    const allSeries = [...played, ...upcoming];
+                    const kdaPoints = played.reduce((sum, s) => sum + (s.series_points || 0), 0);
+                    const teamPoints = played.reduce((sum, s) => sum + s.team_points, 0);
+
+                    results.push({
+                      ...playerInfo,
+                      rating_points: kdaPoints,
+                      team_points: teamPoints,
+                      total_points: kdaPoints + teamPoints,
+                      series: allSeries
+                    });
+
+                    remaining--;
+                    if (remaining === 0) finalize();
+                  }
+                );
               }
             );
           });

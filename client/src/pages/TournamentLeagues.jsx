@@ -175,7 +175,7 @@ function TournamentLeagues() {
         style={tournamentBanner ? { backgroundImage: `url(${tournamentBanner})` } : {}}
       >
         <div className="tl-banner-content">
-          <button className="btn-text tl-back" onClick={() => navigate('/my-fantasy')}>
+          <button className="btn-text tl-back" onClick={() => navigate(isReadOnly ? '/finished-tournaments' : '/my-fantasy')}>
             ← Back to Tournaments
           </button>
           <h1 className="tl-banner-title">
