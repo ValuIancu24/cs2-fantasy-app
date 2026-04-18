@@ -138,17 +138,66 @@ function initDatabase() {
     // Migrations — silently ignore if column already exists
     db.run(`ALTER TABLE leagues ADD COLUMN tournament_id INTEGER`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN is_visible INTEGER DEFAULT 1`, () => {});
+    db.run(`UPDATE tournaments SET is_visible = 1 WHERE is_visible IS NULL`, () => {});
     // Backfill player_tournaments from existing players rows
     db.run(`INSERT OR IGNORE INTO player_tournaments (player_id, tournament_id, team_id)
             SELECT id, tournament_id, team_id FROM players WHERE tournament_id IS NOT NULL`, () => {});
     db.run(`ALTER TABLE leagues ADD COLUMN is_public BOOLEAN DEFAULT 1`, () => {});
     db.run(`ALTER TABLE leagues ADD COLUMN invite_code TEXT`, () => {});
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
-    db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN banner_url TEXT`, () => {});
     db.run(`ALTER TABLE players ADD COLUMN price INTEGER DEFAULT 190000`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN start_date TEXT`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});
+
+    // Migrate player_tournaments to add ON DELETE CASCADE if missing
+    db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='player_tournaments'`, [], (err, row) => {
+      if (err || !row) return;
+      if (row.sql && row.sql.includes('ON DELETE CASCADE')) return; // already migrated
+
+      console.log('[DB] Migrating player_tournaments to add ON DELETE CASCADE...');
+      db.serialize(() => {
+        db.run(`CREATE TABLE IF NOT EXISTS player_tournaments_new (
+          player_id TEXT NOT NULL,
+          tournament_id INTEGER NOT NULL,
+          team_id TEXT,
+          PRIMARY KEY (player_id, tournament_id),
+          FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+          FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+        )`);
+        db.run(`INSERT OR IGNORE INTO player_tournaments_new SELECT player_id, tournament_id, team_id FROM player_tournaments`);
+        db.run(`DROP TABLE player_tournaments`);
+        db.run(`ALTER TABLE player_tournaments_new RENAME TO player_tournaments`, (err) => {
+          if (err) console.error('[DB] player_tournaments migration failed:', err.message);
+          else console.log('[DB] player_tournaments migrated with ON DELETE CASCADE');
+        });
+      });
+    });
+
+    // Migrate teams table to composite PK (id, tournament_id) if still on old single-column PK
+    db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='teams'`, [], (err, row) => {
+      if (err || !row) return;
+      const hasCompositePK = row.sql && row.sql.includes('PRIMARY KEY (id, tournament_id)');
+      if (hasCompositePK) return; // already migrated
+
+      console.log('[DB] Migrating teams table to composite primary key...');
+      db.serialize(() => {
+        db.run(`CREATE TABLE IF NOT EXISTS teams_new (
+          id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          tournament_id INTEGER NOT NULL,
+          PRIMARY KEY (id, tournament_id),
+          FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
+        )`);
+        db.run(`INSERT OR IGNORE INTO teams_new (id, name, tournament_id) SELECT id, name, tournament_id FROM teams`);
+        db.run(`DROP TABLE teams`);
+        db.run(`ALTER TABLE teams_new RENAME TO teams`, (err) => {
+          if (err) console.error('[DB] Teams migration failed:', err.message);
+          else console.log('[DB] Teams table migrated to composite PK');
+        });
+      });
+    });
 
     db.get('SELECT id FROM users WHERE username = ?', ['admin'], (err, row) => {
       if (!row) {

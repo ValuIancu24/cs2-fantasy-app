@@ -9,7 +9,7 @@ router.get('/active', (req, res) => {
   db.all(
     `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
      WHERE status = 'active' AND (is_visible IS NULL OR is_visible = 1)
-     ORDER BY COALESCE(start_date, last_synced) DESC`,
+     ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -22,8 +22,8 @@ router.get('/active', (req, res) => {
 router.get('/historical', authMiddleware, (req, res) => {
   db.all(
     `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
-     WHERE status = 'historical' AND is_visible = 1
-     ORDER BY COALESCE(start_date, last_synced) DESC`,
+     WHERE status = 'historical' AND (is_visible IS NULL OR is_visible = 1)
+     ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -37,7 +37,9 @@ router.get('/:tournamentId/info', (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
   db.get(
-    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments WHERE id = ?`,
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, start_date, end_date
+     FROM tournaments
+     WHERE id = ? AND (is_visible IS NULL OR is_visible = 1)`,
     [tournamentId],
     (err, row) => {
       if (err) return res.status(500).json({ message: 'Database error' });

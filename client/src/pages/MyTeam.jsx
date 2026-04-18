@@ -49,7 +49,7 @@ function MyTeam() {
   useEffect(() => {
     if (!tournamentId) return;
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(t => { if (t?.name) setTournamentName(t.name); })
       .catch(() => {});
   }, [apiBase, tournamentId]);

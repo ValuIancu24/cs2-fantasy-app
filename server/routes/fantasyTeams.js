@@ -11,6 +11,13 @@ function recalcTeamPoints(teamId, lineup, tournamentId, cb) {
   let remaining = lineup.length;
   let totalRating = 0;
   let totalTeam = 0;
+  let failed = false;
+
+  const fail = (err) => {
+    if (failed) return;
+    failed = true;
+    cb(err);
+  };
 
   lineup.forEach(playerId => {
     db.get(
@@ -21,16 +28,18 @@ function recalcTeamPoints(teamId, lineup, tournamentId, cb) {
          GROUP BY series_id
        )`,
       [playerId, tournamentId],
-      (_err, kdaRow) => {
+      (err, kdaRow) => {
+        if (err) return fail(err);
         totalRating += kdaRow?.pts || 0;
         db.get(
           `SELECT
-             COUNT(DISTINCT CASE WHEN team_win = 1 THEN series_id END) as wins,
-             COUNT(DISTINCT CASE WHEN team_win = 0 THEN series_id END) as losses
+             COUNT(DISTINCT CASE WHEN team_win IS NOT NULL AND team_win = 1 THEN series_id END) as wins,
+             COUNT(DISTINCT CASE WHEN team_win IS NOT NULL AND team_win = 0 THEN series_id END) as losses
            FROM player_stats
            WHERE player_id = ? AND tournament_id = ?`,
           [playerId, tournamentId],
-          (_err2, teamRow) => {
+          (err2, teamRow) => {
+            if (err2) return fail(err2);
             totalTeam += ((teamRow?.wins || 0) * 15) - ((teamRow?.losses || 0) * 15);
             remaining--;
             if (remaining === 0) {
@@ -38,7 +47,10 @@ function recalcTeamPoints(teamId, lineup, tournamentId, cb) {
               db.run(
                 'UPDATE fantasy_teams SET rating_points = ?, team_points = ?, total_points = ? WHERE id = ?',
                 [totalRating, totalTeam, total, teamId],
-                () => cb(null, total)
+                (err3) => {
+                  if (err3) return fail(err3);
+                  cb(null, total);
+                }
               );
             }
           }
@@ -65,6 +77,9 @@ router.post('/', authMiddleware, (req, res) => {
 
   if (!leagueId || !teamName || !Array.isArray(lineup)) {
     return res.status(400).json({ message: 'leagueId, teamName and lineup required' });
+  }
+  if (!teamName.trim()) {
+    return res.status(400).json({ message: 'Team name cannot be blank' });
   }
   if (teamName.trim().length > 30) {
     return res.status(400).json({ message: 'Team name cannot exceed 30 characters' });
@@ -119,11 +134,12 @@ router.get('/:leagueId', authMiddleware, (req, res) => {
 
       const placeholders = lineup.map(() => '?').join(',');
       db.all(
-        `SELECT p.id, p.nickname, p.team_id, t.name AS team_name
+        `SELECT p.id, p.nickname, pt.team_id, t.name AS team_name
          FROM players p
-         LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
+         LEFT JOIN player_tournaments pt ON pt.player_id = p.id AND pt.tournament_id = ?
+         LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
          WHERE p.id IN (${placeholders})`,
-        lineup,
+        [tournamentId, ...lineup],
         (err, players) => {
           if (err) return res.status(500).json({ message: 'Database error' });
           res.json({ ...team, lineup, players: players || [] });
@@ -141,6 +157,10 @@ router.put('/:id', authMiddleware, (req, res) => {
   db.get('SELECT * FROM fantasy_teams WHERE id = ? AND user_id = ?', [teamId, req.user.id], (err, team) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    if (teamName !== undefined && !teamName.trim()) {
+      return res.status(400).json({ message: 'Team name cannot be blank' });
+    }
 
     const validationError = validateLineup(lineup);
     if (validationError) {
@@ -197,9 +217,10 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
       db.all(
         `SELECT p.id, p.nickname, t.name AS team_name
          FROM players p
-         LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
+         LEFT JOIN player_tournaments pt ON pt.player_id = p.id AND pt.tournament_id = ?
+         LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
          WHERE p.id IN (${placeholders})`,
-        lineup,
+        [tournamentId, ...lineup],
         (err, players) => {
           if (err) return res.status(500).json({ message: 'Database error' });
 
@@ -246,7 +267,7 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                 const played = (err ? [] : (seriesRows || [])).map(s => ({
                   ...s,
                   upcoming: false,
-                  team_points: s.team_win === 1 ? 15 : -15
+                  team_points: s.team_win === 1 ? 15 : s.team_win === 0 ? -15 : 0
                 }));
 
                 const playerInfo = playerMap[String(playerId)] || { id: playerId, nickname: playerId, team_name: null };
@@ -269,12 +290,13 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                      AND (LOWER(sc.team1_name) = LOWER(?) OR LOWER(sc.team2_name) = LOWER(?))
                      AND sc.team1_name NOT LIKE '%TBD%'
                      AND sc.team2_name NOT LIKE '%TBD%'
+                     AND datetime(sc.scheduled_at) > datetime('now')
                      AND sc.id NOT IN (
                        SELECT DISTINCT series_id FROM player_stats
-                       WHERE player_id = ? AND tournament_id = ?
+                       WHERE tournament_id = ?
                      )
                    ORDER BY sc.scheduled_at ASC`,
-                  [tournamentId, teamName, teamName, playerId, tournamentId],
+                  [tournamentId, teamName, teamName, tournamentId],
                   (err2, upcomingRows) => {
                     const upcoming = (err2 ? [] : (upcomingRows || [])).map(s => ({
                       ...s,
@@ -330,18 +352,28 @@ router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
       db.get('SELECT COUNT(*) as count FROM fantasy_teams WHERE league_id = ?', [leagueId], (err, row) => {
         if (err) return res.status(500).json({ message: 'Database error' });
 
-        // Find user's rank
+        // Check user has a team before computing rank
         db.get(
-          `SELECT COUNT(*) + 1 as rank FROM fantasy_teams
-           WHERE league_id = ? AND (
-             total_points > (SELECT total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?)
-             OR (total_points = (SELECT total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?)
-                 AND id < (SELECT id FROM fantasy_teams WHERE league_id = ? AND user_id = ?))
-           )`,
-          [leagueId, leagueId, userId, leagueId, userId, leagueId, userId],
-          (err, rankRow) => {
-            const userRank = rankRow?.rank || null;
-            res.json({ page, limit, total: row.count, teams: teams || [], userRank });
+          `SELECT id, total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?`,
+          [leagueId, userId],
+          (err, userTeam) => {
+            if (err) return res.status(500).json({ message: 'Database error' });
+            if (!userTeam) {
+              return res.json({ page, limit, total: row.count, teams: teams || [], userRank: null });
+            }
+
+            db.get(
+              `SELECT COUNT(*) + 1 as rank FROM fantasy_teams
+               WHERE league_id = ? AND (
+                 total_points > ?
+                 OR (total_points = ? AND id < ?)
+               )`,
+              [leagueId, userTeam.total_points, userTeam.total_points, userTeam.id],
+              (err, rankRow) => {
+                if (err) return res.status(500).json({ message: 'Database error' });
+                res.json({ page, limit, total: row.count, teams: teams || [], userRank: rankRow?.rank || null });
+              }
+            );
           }
         );
       });

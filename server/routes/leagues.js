@@ -4,7 +4,10 @@ const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 
 function generateInviteCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const { randomBytes } = require('crypto');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = randomBytes(6);
+  return Array.from(bytes).map(b => alphabet[b % alphabet.length]).join('');
 }
 
 function createEmptyFantasyTeam(userId, leagueId, username, callback) {
@@ -38,6 +41,7 @@ router.post('/', authMiddleware, (req, res) => {
     'SELECT id FROM leagues WHERE LOWER(name) = LOWER(?) AND tournament_id = ?',
     [name.trim(), tournamentId],
     (err, existing) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
       if (existing) return res.status(400).json({ message: 'A league with this name already exists for this tournament' });
       insertLeague();
     }
@@ -64,6 +68,26 @@ router.post('/', authMiddleware, (req, res) => {
     }
   );
   } // end insertLeague
+});
+
+// GET SINGLE LEAGUE INFO
+router.get('/:id/info', authMiddleware, (req, res) => {
+  const leagueId = parseInt(req.params.id, 10);
+  if (!leagueId) return res.status(400).json({ message: 'Invalid league ID' });
+
+  db.get(
+    `SELECT l.id, l.name, l.tournament_id, l.status,
+            t.status AS tournament_status
+     FROM leagues l
+     LEFT JOIN tournaments t ON t.id = l.tournament_id
+     WHERE l.id = ?`,
+    [leagueId],
+    (err, row) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (!row) return res.status(404).json({ message: 'League not found' });
+      res.json(row);
+    }
+  );
 });
 
 // GET LEAGUES (all for admin, own for users)
@@ -106,7 +130,7 @@ router.post('/:id/join', authMiddleware, (req, res) => {
     if (!league) return res.status(404).json({ message: 'League not found' });
     if (league.status !== 'active') return res.status(400).json({ message: 'League not active' });
 
-    const isPublic = league.is_public === 1 || league.is_public === true;
+    const isPublic = !(league.is_public === 0 || league.is_public === false);
 
     if (!isPublic) {
       const provided = (inviteCode || '').toUpperCase();
@@ -196,13 +220,22 @@ router.delete('/:id', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
   const leagueId = parseInt(req.params.id, 10);
 
-  db.run('DELETE FROM fantasy_teams WHERE league_id = ?', [leagueId], (err) => {
-    if (err) return res.status(500).json({ message: 'Failed to delete teams' });
-    db.run('DELETE FROM league_members WHERE league_id = ?', [leagueId], (err) => {
-      if (err) return res.status(500).json({ message: 'Failed to delete members' });
-      db.run('DELETE FROM leagues WHERE id = ?', [leagueId], (err) => {
-        if (err) return res.status(500).json({ message: 'Failed to delete league' });
-        res.json({ message: 'League deleted' });
+  db.run('BEGIN', (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to start transaction' });
+
+    const rollback = (msg) => db.run('ROLLBACK', () => res.status(500).json({ message: msg }));
+
+    db.run('DELETE FROM fantasy_teams WHERE league_id = ?', [leagueId], (err) => {
+      if (err) return rollback('Failed to delete teams');
+      db.run('DELETE FROM league_members WHERE league_id = ?', [leagueId], (err) => {
+        if (err) return rollback('Failed to delete members');
+        db.run('DELETE FROM leagues WHERE id = ?', [leagueId], (err) => {
+          if (err) return rollback('Failed to delete league');
+          db.run('COMMIT', (err) => {
+            if (err) return rollback('Failed to commit transaction');
+            res.json({ message: 'League deleted' });
+          });
+        });
       });
     });
   });

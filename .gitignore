@@ -138,3 +138,6 @@ dist
 # SQLite database files
 *.db
 database.db
+
+# Claude Code
+.claude/

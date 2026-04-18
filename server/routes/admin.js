@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const db = require('../database');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
@@ -8,11 +9,23 @@ const dataAdapter = require('../services/dataAdapter');
 
 const router = express.Router();
 
+// Ensure banners upload directory exists
+const bannersDir = path.join(__dirname, '..', '..', 'client', 'public', 'uploads', 'banners');
+fs.mkdirSync(bannersDir, { recursive: true });
+
 // Multer config for tournament banners
+const ALLOWED_MIME_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif'
+};
+
 const bannerStorage = multer.diskStorage({
   destination: path.join(__dirname, '..', '..', 'client', 'public', 'uploads', 'banners'),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    const ext = ALLOWED_MIME_EXTENSIONS[file.mimetype];
+    if (!ext) return cb(new Error('Invalid file type'));
     cb(null, `tournament_${req.params.id}_${Date.now()}${ext}`);
   }
 });
@@ -20,7 +33,10 @@ const uploadBanner = multer({
   storage: bannerStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
-    cb(null, /image\/(jpeg|png|webp|gif)/.test(file.mimetype));
+    if (!ALLOWED_MIME_EXTENSIONS[file.mimetype]) {
+      return cb(new Error('Only JPEG, PNG, WebP and GIF images are allowed'));
+    }
+    cb(null, true);
   }
 });
 
@@ -205,6 +221,7 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
     db.run('DELETE FROM player_stats');
     db.run('DELETE FROM player_aliases');
     db.run('DELETE FROM series_cache');
+    db.run('DELETE FROM player_tournaments');
     db.run('DELETE FROM players');
     db.run('DELETE FROM teams');
     db.run('DELETE FROM tournaments');
@@ -223,7 +240,7 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
 // GET all tournaments (for admin management)
 router.get('/tournaments', authMiddleware, requireAdmin, (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY COALESCE(start_date, last_synced) DESC`,
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -241,8 +258,20 @@ router.patch('/tournaments/:id/status', authMiddleware, requireAdmin, (req, res)
   const updates = [];
   const params = [];
 
-  if (status !== undefined) { updates.push('status = ?'); params.push(status); }
-  if (is_visible !== undefined) { updates.push('is_visible = ?'); params.push(is_visible ? 1 : 0); }
+  if (status !== undefined) {
+    if (!['active', 'historical'].includes(status)) {
+      return res.status(400).json({ message: "status must be 'active' or 'historical'" });
+    }
+    updates.push('status = ?');
+    params.push(status);
+  }
+  if (is_visible !== undefined) {
+    if (![0, 1, true, false].includes(is_visible)) {
+      return res.status(400).json({ message: 'is_visible must be 0 or 1' });
+    }
+    updates.push('is_visible = ?');
+    params.push(is_visible ? 1 : 0);
+  }
   if (updates.length === 0) return res.status(400).json({ message: 'Nothing to update' });
 
   params.push(id);
@@ -258,28 +287,42 @@ router.delete('/tournaments/:id', authMiddleware, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
 
-  db.serialize(() => {
-    db.run('DELETE FROM player_stats WHERE tournament_id = ?', [id]);
-    db.run('DELETE FROM series_cache WHERE tournament_id = ?', [id]);
-    db.run('DELETE FROM player_tournaments WHERE tournament_id = ?', [id]);
-    db.run('DELETE FROM teams WHERE tournament_id = ?', [id]);
-    // Delete fantasy teams and league members for leagues of this tournament
-    db.run('DELETE FROM fantasy_teams WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id]);
-    db.run('DELETE FROM league_members WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id]);
-    db.run('DELETE FROM leagues WHERE tournament_id = ?', [id]);
-    db.run('DELETE FROM tournaments WHERE id = ?', [id], function (err) {
-      if (err) return res.status(500).json({ message: 'Database error' });
-      if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });
-      res.json({ success: true });
+  db.run('BEGIN', (err) => {
+    if (err) return res.status(500).json({ message: 'Failed to start transaction' });
+
+    const rollback = (msg) => db.run('ROLLBACK', () => res.status(500).json({ message: msg }));
+
+    db.serialize(() => {
+      db.run('DELETE FROM player_stats WHERE tournament_id = ?', [id], (err) => { if (err) return rollback('Failed to delete player_stats'); });
+      db.run('DELETE FROM series_cache WHERE tournament_id = ?', [id], (err) => { if (err) return rollback('Failed to delete series_cache'); });
+      db.run('DELETE FROM player_tournaments WHERE tournament_id = ?', [id], (err) => { if (err) return rollback('Failed to delete player_tournaments'); });
+      db.run('DELETE FROM teams WHERE tournament_id = ?', [id], (err) => { if (err) return rollback('Failed to delete teams'); });
+      db.run('DELETE FROM fantasy_teams WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id], (err) => { if (err) return rollback('Failed to delete fantasy_teams'); });
+      db.run('DELETE FROM league_members WHERE league_id IN (SELECT id FROM leagues WHERE tournament_id = ?)', [id], (err) => { if (err) return rollback('Failed to delete league_members'); });
+      db.run('DELETE FROM leagues WHERE tournament_id = ?', [id], (err) => { if (err) return rollback('Failed to delete leagues'); });
+      db.run('DELETE FROM tournaments WHERE id = ?', [id], function (err) {
+        if (err) return rollback('Failed to delete tournament');
+        if (this.changes === 0) return rollback('Tournament not found');
+        db.run('COMMIT', (err) => {
+          if (err) return rollback('Failed to commit');
+          res.json({ success: true });
+        });
+      });
     });
   });
 });
 
 // ── TOURNAMENT BANNER ─────────────────────────────────────────────────────────
 
-router.post('/tournaments/:id/banner', authMiddleware, requireAdmin, uploadBanner.single('banner'), (req, res) => {
+router.post('/tournaments/:id/banner', authMiddleware, requireAdmin,
+  (req, res, next) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
+    next();
+  },
+  uploadBanner.single('banner'),
+  (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
   const bannerUrl = `/uploads/banners/${req.file.filename}`;

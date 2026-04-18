@@ -226,8 +226,8 @@
 .myteam-series-pts.positive { color: #b5f5a0; }
 .myteam-series-pts.negative { color: #ff6b81; }
 
-.positive { color: #b5f5a0; }
-.negative { color: #ff6b81; }
+.myteam-page .positive { color: #b5f5a0; }
+.myteam-page .negative { color: #ff6b81; }
 
 .myteam-breakdown-total {
   display: flex;
