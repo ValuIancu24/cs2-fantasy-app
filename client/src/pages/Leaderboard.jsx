@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import { FlagImg } from '../utils/flag.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/leaderboard.css';

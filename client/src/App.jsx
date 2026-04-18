@@ -9,16 +9,17 @@ import TournamentLeagues from './pages/TournamentLeagues.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import TeamBuilder from './pages/TeamBuilder.jsx';
 import MyTeam from './pages/MyTeam.jsx';
+import Matches from './pages/Matches.jsx';
+import MatchDetail from './pages/MatchDetail.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import FinishedTournaments from './pages/FinishedTournaments.jsx';
 import Profile from './pages/Profile.jsx';
 import { FlagImg } from './utils/flag.jsx';
+import { AuthContext } from './context/AuthContext.jsx';
 import './styles/app.css';
 
 const API_BASE = 'http://localhost:5000/api';
-
-export const AuthContext = React.createContext(null);
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = React.useContext(AuthContext);
@@ -50,6 +51,7 @@ function NavLinks({ user }) {
           {tournamentId && (
             <>
               <Link to={`/tournament/${tournamentId}/leagues`}>Leagues</Link>
+              <Link to={`/tournament/${tournamentId}/matches`}>Matches</Link>
               <Link to={`/tournament/${tournamentId}/my-team`}>My Team</Link>
               <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
             </>
@@ -150,6 +152,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TeamBuilder />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:tournamentId/matches/:seriesId"
+              element={
+                <ProtectedRoute>
+                  <MatchDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:tournamentId/matches"
+              element={
+                <ProtectedRoute>
+                  <Matches />
                 </ProtectedRoute>
               }
             />

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import { FlagImg } from '../utils/flag.jsx';
 import '../styles/tournament-leagues.css';
 import '../styles/finished-tournaments.css';
