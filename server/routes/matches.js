@@ -20,8 +20,10 @@ router.get('/tournament/:tournamentId', (req, res) => {
 
     db.all(
       `SELECT sc.*,
-              (SELECT COUNT(*) FROM player_stats ps WHERE ps.series_id = sc.id) > 0 AS has_stats
+              (ps_agg.cnt > 0) AS has_stats
        FROM series_cache sc
+       LEFT JOIN (SELECT series_id, COUNT(*) AS cnt FROM player_stats GROUP BY series_id) ps_agg
+         ON ps_agg.series_id = sc.id
        WHERE sc.tournament_id = ?
          AND (sc.team1_name IS NOT NULL AND sc.team1_name NOT LIKE '%TBD%')
          AND (sc.team2_name IS NOT NULL AND sc.team2_name NOT LIKE '%TBD%')
@@ -68,11 +70,14 @@ router.get('/tournament/:tournamentId', (req, res) => {
             const results = finishedSeries
               .map(s => {
                 const info = scoreMap[s.id];
+                if (!info?.winning_team) {
+                  return { ...s, team1_score: null, team2_score: null };
+                }
                 const mapsNeeded = mapsToWin(s.format);
-                const totalMaps = info?.total_maps || 0;
+                const totalMaps = info.total_maps || 0;
                 const winnerScore = mapsNeeded;
-                const loserScore = totalMaps - mapsNeeded;
-                const team1Won = info?.winning_team === s.team1_name;
+                const loserScore = Math.max(0, totalMaps - mapsNeeded);
+                const team1Won = info.winning_team === s.team1_name;
                 return {
                   ...s,
                   team1_score: team1Won ? winnerScore : loserScore,
@@ -136,10 +141,10 @@ router.get('/:seriesId', (req, res) => {
               if (err) return res.status(500).json({ message: 'Database error' });
 
               const mapsNeeded = mapsToWin(series.format);
+              const winningTeam = scoreInfo?.winning_team || null;
               const totalMaps = scoreInfo?.total_maps || 0;
               const winnerScore = mapsNeeded;
-              const loserScore = totalMaps - mapsNeeded;
-              const winningTeam = scoreInfo?.winning_team;
+              const loserScore = winningTeam ? Math.max(0, totalMaps - mapsNeeded) : 0;
               const winCount = {
                 [series.team1_name]: winningTeam === series.team1_name ? winnerScore : loserScore,
                 [series.team2_name]: winningTeam === series.team2_name ? winnerScore : loserScore
@@ -148,7 +153,7 @@ router.get('/:seriesId', (req, res) => {
               // Group players by team, sorted by total fantasy points desc
               const teamMap = {};
               (players || []).forEach(p => {
-                const teamPts = p.team_win === 1 ? 15 : -15;
+                const teamPts = p.team_win === 1 ? 15 : p.team_win === 0 ? -15 : 0;
                 const totalPts = p.kda_points + teamPts;
                 if (!teamMap[p.team_name]) teamMap[p.team_name] = [];
                 teamMap[p.team_name].push({ ...p, team_points: teamPts, total_points: totalPts });

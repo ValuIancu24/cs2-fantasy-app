@@ -1,6 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+import '../styles/myfantasy.css';
+import '../styles/finished-tournaments.css';
 
 function formatTournamentDates(startDate, endDate) {
   if (!startDate) return null;
@@ -20,9 +22,6 @@ function formatTournamentDates(startDate, endDate) {
     return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${startYear}`;
   return `${startDay} ${startMonth} ${startYear} – ${endDay} ${endMonth} ${endYear}`;
 }
-
-import '../styles/myfantasy.css';
-import '../styles/finished-tournaments.css';
 
 function FinishedTournaments() {
   const { apiBase, user } = useContext(AuthContext);

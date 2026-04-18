@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/admin.css';
 
@@ -53,6 +53,11 @@ function AdminDashboard() {
   const [wipeMessage, setWipeMessage] = useState('');
 
   const token = localStorage.getItem('cs2_fantasy_token');
+  const objectUrlRef = useRef(null);
+
+  useEffect(() => {
+    return () => { if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current); };
+  }, []);
 
   const fetchStats = async () => {
     const res = await fetch(`${apiBase}/admin/stats`, {
@@ -71,9 +76,9 @@ function AdminDashboard() {
           setAllTournaments(data);
           const active = data.filter(t => t.status === 'active');
           setActiveTournaments(active);
-          if (active.length > 0) {
-            setBannerTournamentId(String(active[0].id));
-            setBannerPreview(active[0].banner_url || '');
+          if (data.length > 0) {
+            setBannerTournamentId(String(data[0].id));
+            setBannerPreview(data[0].banner_url || '');
           }
         }
       })
@@ -509,13 +514,13 @@ function AdminDashboard() {
             value={bannerTournamentId}
             onChange={e => {
               setBannerTournamentId(e.target.value);
-              const t = activeTournaments.find(t => String(t.id) === e.target.value);
+              const t = allTournaments.find(t => String(t.id) === e.target.value);
               setBannerFile(null);
               setBannerPreview(t?.banner_url || '');
               setBannerMessage('');
             }}
           >
-            {activeTournaments.map(t => (
+            {allTournaments.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
@@ -528,8 +533,11 @@ function AdminDashboard() {
             onChange={e => {
               const file = e.target.files?.[0];
               if (!file) return;
+              if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+              const url = URL.createObjectURL(file);
+              objectUrlRef.current = url;
               setBannerFile(file);
-              setBannerPreview(URL.createObjectURL(file));
+              setBannerPreview(url);
               setBannerMessage('');
             }}
             style={{ padding: '0.3rem 0' }}
@@ -540,7 +548,7 @@ function AdminDashboard() {
             <img
               src={bannerPreview}
               alt="Banner preview"
-              style={{ width: '100%', maxHeight: 130, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}
+              style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}
             />
           </div>
         )}

@@ -10,9 +10,10 @@ router.get('/', (req, res) => {
 
   if (!leagueId) {
     db.all(
-      `SELECT p.id, p.nickname, p.team_id, p.tournament_id, p.price, t.name AS team_name
+      `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, p.price, t.name AS team_name
        FROM players p
-       LEFT JOIN teams t ON t.id = p.team_id AND t.tournament_id = p.tournament_id
+       LEFT JOIN player_tournaments pt ON pt.player_id = p.id
+       LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
        WHERE p.is_active = 1
        ORDER BY t.name, p.nickname`,
       [],

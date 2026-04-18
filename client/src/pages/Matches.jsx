@@ -22,8 +22,21 @@ function MatchCard({ match, onClick, finished }) {
   const t1Won = finished && match.team1_score > match.team2_score;
   const t2Won = finished && match.team2_score > match.team1_score;
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div className="match-card" onClick={onClick}>
+    <div
+      className="match-card"
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+    >
       <div className="match-card-time">
         <span className="time">{time}</span>
         <span className="date">{date}</span>

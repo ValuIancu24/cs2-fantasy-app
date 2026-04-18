@@ -55,9 +55,9 @@ function TournamentLeagues() {
 
     // Also fetch tournament info (name, banner, status)
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(t => {
-        if (t) {
+        if (t?.name) {
           setTournamentName(t.name);
           setTournamentBanner(t.banner_url || '');
           setIsReadOnly(t.status === 'historical');

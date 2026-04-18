@@ -28,12 +28,12 @@ function MatchDetail() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${apiBase}/matches/${seriesId}`).then(r => r.json()),
-      fetch(`${apiBase}/tournaments/${tournamentId}/info`).then(r => r.json())
+      fetch(`${apiBase}/matches/${seriesId}`).then(r => r.ok ? r.json() : null),
+      fetch(`${apiBase}/tournaments/${tournamentId}/info`).then(r => r.ok ? r.json() : null)
     ])
       .then(([matchData, tournamentData]) => {
-        setData(matchData);
-        setBannerUrl(tournamentData.banner_url || '');
+        if (matchData) setData(matchData);
+        setBannerUrl(tournamentData?.banner_url || '');
       })
       .catch(() => {})
       .finally(() => setLoading(false));
