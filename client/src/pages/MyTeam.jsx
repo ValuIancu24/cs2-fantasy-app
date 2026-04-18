@@ -178,7 +178,7 @@ function MyTeam() {
                 <span className="muted myteam-player-team">{player.team_name || '—'}</span>
                 <span className="myteam-player-pts">{player.total_points.toFixed(1)} pts</span>
                 <span className="myteam-series-count muted">
-                  {player.series.length} {player.series.length === 1 ? 'series' : 'series'}
+                  {player.series.filter(s => !s.upcoming && !s.ongoing).length} {player.series.filter(s => !s.upcoming && !s.ongoing).length === 1 ? 'series' : 'series'}
                 </span>
               </div>
             ))}
@@ -201,7 +201,7 @@ function MyTeam() {
                 {player.series.map((s, i) => {
                   const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
                   return (
-                    <div key={s.series_id} className={`myteam-series-row ${s.upcoming ? 'upcoming' : ''}`}>
+                    <div key={s.series_id} className={`myteam-series-row ${s.ongoing ? 'ongoing' : s.upcoming ? 'upcoming' : ''}`}>
                       <div className="myteam-series-info">
                         <span className="myteam-series-matchup">{matchup}</span>
                         <span className="muted myteam-series-meta">
@@ -209,7 +209,9 @@ function MyTeam() {
                           {s.scheduled_at ? ` · ${formatDate(s.scheduled_at)}` : ''}
                         </span>
                       </div>
-                      {s.upcoming ? (
+                      {s.ongoing ? (
+                        <span className="myteam-ongoing-badge">Ongoing</span>
+                      ) : s.upcoming ? (
                         <span className="myteam-upcoming-badge">Upcoming</span>
                       ) : (
                         <div className="myteam-series-stats">
@@ -260,14 +262,16 @@ function MyTeam() {
                 {allSeriesEntries.map((s, i) => {
                   const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
                   return (
-                    <div key={`${s.player.id}-${s.series_id}`} className={`myteam-timeline-card ${s.upcoming ? 'upcoming' : ''}`}>
+                    <div key={`${s.player.id}-${s.series_id}`} className={`myteam-timeline-card ${s.ongoing ? 'ongoing' : s.upcoming ? 'upcoming' : ''}`}>
                       <div className="myteam-timeline-player">{s.player.nickname}</div>
                       <div className="myteam-timeline-matchup">{matchup}</div>
                       <div className="myteam-timeline-meta muted">
                         {s.format || ''}
                         {s.scheduled_at ? ` · ${formatDate(s.scheduled_at)}` : ''}
                       </div>
-                      {s.upcoming ? (
+                      {s.ongoing ? (
+                        <span className="myteam-ongoing-badge">Ongoing</span>
+                      ) : s.upcoming ? (
                         <span className="myteam-upcoming-badge">Upcoming</span>
                       ) : (
                         <>

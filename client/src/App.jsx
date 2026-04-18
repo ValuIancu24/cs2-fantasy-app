@@ -15,6 +15,8 @@ import Leaderboard from './pages/Leaderboard.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import FinishedTournaments from './pages/FinishedTournaments.jsx';
 import Profile from './pages/Profile.jsx';
+import Players from './pages/Players.jsx';
+import PlayerProfile from './pages/PlayerProfile.jsx';
 import { FlagImg } from './utils/flag.jsx';
 import { AuthContext } from './context/AuthContext.jsx';
 import './styles/app.css';
@@ -52,6 +54,7 @@ function NavLinks({ user }) {
             <>
               <Link to={`/tournament/${tournamentId}/leagues`}>Leagues</Link>
               <Link to={`/tournament/${tournamentId}/matches`}>Matches</Link>
+              <Link to={`/tournament/${tournamentId}/players`}>Players</Link>
               <Link to={`/tournament/${tournamentId}/my-team`}>My Team</Link>
               <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
             </>
@@ -202,6 +205,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Leaderboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:tournamentId/players"
+              element={
+                <ProtectedRoute>
+                  <Players />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tournament/:tournamentId/players/:playerId"
+              element={
+                <ProtectedRoute>
+                  <PlayerProfile />
                 </ProtectedRoute>
               }
             />

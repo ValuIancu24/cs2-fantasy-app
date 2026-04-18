@@ -285,15 +285,15 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                   return;
                 }
 
-                // Fetch upcoming series for this player's team (not yet played, no TBD teams)
+                // Fetch upcoming/ongoing series for this player's team (not yet finished, no TBD teams)
                 db.all(
-                  `SELECT sc.id AS series_id, sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at
+                  `SELECT sc.id AS series_id, sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at,
+                          CASE WHEN datetime(sc.scheduled_at) > datetime('now') THEN 'upcoming' ELSE 'ongoing' END AS match_status
                    FROM series_cache sc
                    WHERE sc.tournament_id = ?
                      AND (LOWER(sc.team1_name) = LOWER(?) OR LOWER(sc.team2_name) = LOWER(?))
                      AND sc.team1_name NOT LIKE '%TBD%'
                      AND sc.team2_name NOT LIKE '%TBD%'
-                     AND datetime(sc.scheduled_at) > datetime('now')
                      AND sc.id NOT IN (
                        SELECT DISTINCT series_id FROM player_stats
                        WHERE tournament_id = ?
@@ -303,7 +303,8 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                   (err2, upcomingRows) => {
                     const upcoming = (err2 ? [] : (upcomingRows || [])).map(s => ({
                       ...s,
-                      upcoming: true,
+                      upcoming: s.match_status === 'upcoming',
+                      ongoing: s.match_status === 'ongoing',
                       kills: null, deaths: null, assists: null,
                       series_points: null, team_win: null, team_points: null
                     }));

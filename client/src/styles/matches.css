@@ -80,6 +80,23 @@
   background: rgba(20, 5, 50, 0.95);
 }
 
+.match-card.ongoing {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.match-ongoing-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  white-space: nowrap;
+}
+
 .match-card-time {
   display: flex;
   flex-direction: column;

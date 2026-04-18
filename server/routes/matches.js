@@ -40,7 +40,10 @@ router.get('/tournament/:tournamentId', (req, res) => {
         if (err) return res.status(500).json({ message: 'Database error' });
 
         const finishedSeries = (series || []).filter(s => s.has_stats);
-        const upcoming = (series || []).filter(s => !s.has_stats);
+        const upcoming = (series || []).filter(s => !s.has_stats).map(s => ({
+          ...s,
+          ongoing: s.scheduled_at ? new Date(s.scheduled_at) <= new Date() : false
+        }));
 
         if (finishedSeries.length === 0) {
           return res.json({ tournament, upcoming, results: [] });
