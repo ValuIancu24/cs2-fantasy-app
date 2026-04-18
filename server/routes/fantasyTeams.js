@@ -133,18 +133,21 @@ router.get('/:leagueId', authMiddleware, (req, res) => {
       }
 
       const placeholders = lineup.map(() => '?').join(',');
-      db.all(
-        `SELECT p.id, p.nickname, pt.team_id, t.name AS team_name
-         FROM players p
-         LEFT JOIN player_tournaments pt ON pt.player_id = p.id AND pt.tournament_id = ?
-         LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
-         WHERE p.id IN (${placeholders})`,
-        [tournamentId, ...lineup],
-        (err, players) => {
-          if (err) return res.status(500).json({ message: 'Database error' });
-          res.json({ ...team, lineup, players: players || [] });
-        }
-      );
+      db.get('SELECT tournament_id FROM leagues WHERE id = ?', [leagueId], (_e, lg) => {
+        const tid = lg?.tournament_id || null;
+        db.all(
+          `SELECT p.id, p.nickname, pt.team_id, t.name AS team_name
+           FROM players p
+           LEFT JOIN player_tournaments pt ON pt.player_id = p.id AND pt.tournament_id = ?
+           LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
+           WHERE p.id IN (${placeholders})`,
+          [tid, ...lineup],
+          (err, players) => {
+            if (err) return res.status(500).json({ message: 'Database error' });
+            res.json({ ...team, lineup, players: players || [] });
+          }
+        );
+      });
     }
   );
 });
