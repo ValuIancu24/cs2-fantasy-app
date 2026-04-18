@@ -21,6 +21,7 @@ function MatchCard({ match, onClick, finished }) {
   const { time, date } = formatMatchDate(match.scheduled_at);
   const t1Won = finished && match.team1_score > match.team2_score;
   const t2Won = finished && match.team2_score > match.team1_score;
+  const ongoing = !finished && match.ongoing;
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -31,7 +32,7 @@ function MatchCard({ match, onClick, finished }) {
 
   return (
     <div
-      className="match-card"
+      className={`match-card${ongoing ? ' ongoing' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"
@@ -54,12 +55,14 @@ function MatchCard({ match, onClick, finished }) {
         </div>
       </div>
 
-      {finished && (
+      {finished ? (
         <div className="match-card-score">
           <span className={`score-value ${t1Won ? 'win' : 'loss'}`}>{match.team1_score}</span>
           <span className={`score-value ${t2Won ? 'win' : 'loss'}`}>{match.team2_score}</span>
         </div>
-      )}
+      ) : ongoing ? (
+        <span className="match-ongoing-badge">Ongoing</span>
+      ) : null}
     </div>
   );
 }
@@ -85,6 +88,9 @@ function Matches() {
   const { tournament, upcoming, results } = data;
   const goToMatch = seriesId => navigate(`/tournament/${tournamentId}/matches/${seriesId}`);
 
+  const ongoingMatches = upcoming.filter(m => m.ongoing);
+  const notStartedMatches = upcoming.filter(m => !m.ongoing);
+
   return (
     <div className="matches-page">
       <div className="matches-header">
@@ -97,10 +103,19 @@ function Matches() {
         </div>
       </div>
 
-      {upcoming.length > 0 && (
+      {ongoingMatches.length > 0 && (
+        <>
+          <div className="matches-section-title">Ongoing</div>
+          {ongoingMatches.map(m => (
+            <MatchCard key={m.id} match={m} finished={false} onClick={() => goToMatch(m.id)} />
+          ))}
+        </>
+      )}
+
+      {notStartedMatches.length > 0 && (
         <>
           <div className="matches-section-title">Upcoming</div>
-          {upcoming.map(m => (
+          {notStartedMatches.map(m => (
             <MatchCard key={m.id} match={m} finished={false} onClick={() => goToMatch(m.id)} />
           ))}
         </>

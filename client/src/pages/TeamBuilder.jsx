@@ -1,7 +1,9 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+import PlayerFlipCard from '../components/PlayerFlipCard.jsx';
 import '../styles/teambuilder.css';
+import '../styles/players.css';
 
 const BUDGET_CAP = 1_000_000;
 
@@ -249,20 +251,22 @@ function TeamBuilder() {
                   const isSelected = selected.includes(id);
                   const disabled = !canSelect(p) && !isSelected;
                   return (
-                    <button
+                    <PlayerFlipCard
                       key={p.id}
-                      className={`player-card ${isSelected ? 'selected' : ''} ${disabled ? 'disabled' : ''}`}
-                      type="button"
-                      onClick={() => togglePlayer(p)}
+                      player={p}
+                      tournamentId={tournamentId}
+                      isSelected={isSelected}
                       disabled={disabled}
                     >
-                      <div className="player-info">
-                        <div className="name-row">
-                          <span>{p.nickname}</span>
-                        </div>
-                        <div className="player-price">{formatPrice(p.price)}</div>
-                      </div>
-                    </button>
+                      <button
+                        className={`btn-select${isSelected ? ' selected' : ''}`}
+                        type="button"
+                        onClick={() => togglePlayer(p)}
+                        disabled={disabled}
+                      >
+                        {isSelected ? 'Remove' : 'Select'}
+                      </button>
+                    </PlayerFlipCard>
                   );
                 })}
               </div>
