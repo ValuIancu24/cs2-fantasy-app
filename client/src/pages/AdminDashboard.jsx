@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/admin.css';
 
 function formatScheduledTime(isoString) {

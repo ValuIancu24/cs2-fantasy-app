@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/myteam.css';
 
@@ -195,7 +195,7 @@ function MyTeam() {
                 </div>
                 {player.series.length === 0 && (
                   <p className="muted" style={{ padding: '0.5rem 0', fontSize: '0.85rem' }}>
-                    No stats yet. Sync stats from Admin panel.
+                    No upcoming series.
                   </p>
                 )}
                 {player.series.map((s, i) => {

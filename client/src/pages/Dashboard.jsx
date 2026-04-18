@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/dashboard.css';
 
 function Dashboard() {

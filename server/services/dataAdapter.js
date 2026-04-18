@@ -53,6 +53,19 @@ async function syncTournament(tournamentId) {
   }
   console.log(`[DATA ADAPTER] ${teamsMap.size} teams saved`);
 
+  // Populate series_cache with all scheduled matches
+  for (const edge of matchesData.edges) {
+    const node = edge.node;
+    const teams = node.teams.map(t => t.baseInfo?.name).filter(Boolean);
+    await dbRun(
+      `INSERT OR REPLACE INTO series_cache (id, tournament_id, team1_name, team2_name, format, scheduled_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [node.id, tournamentId, teams[0] || null, teams[1] || null,
+       node.format?.nameShortened || null, node.startTimeScheduled || null]
+    );
+  }
+  console.log(`[DATA ADAPTER] ${matchesData.edges.length} series cached`);
+
   // Fetch rosters for each team
   let totalPlayers = await syncRosters(teamsMap, tournamentId);
 

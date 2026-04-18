@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/teambuilder.css';
 
 const BUDGET_CAP = 1_000_000;

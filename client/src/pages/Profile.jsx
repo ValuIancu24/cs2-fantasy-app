@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { AuthContext } from '../App.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
 import { getData } from 'country-list';
 import { FlagImg } from '../utils/flag.jsx';
 import '../styles/profile.css';
