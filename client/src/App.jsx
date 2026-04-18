@@ -69,14 +69,32 @@ function App() {
 
   useEffect(() => {
     const stored = localStorage.getItem('cs2_fantasy_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('cs2_fantasy_user');
-      }
+    const token = localStorage.getItem('cs2_fantasy_token');
+
+    if (stored && token) {
+      fetch(`${API_BASE}/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => {
+          if (!r.ok) throw new Error('Token invalid');
+          return r.json();
+        })
+        .then(freshUser => {
+          const merged = { ...JSON.parse(stored), ...freshUser };
+          localStorage.setItem('cs2_fantasy_user', JSON.stringify(merged));
+          setUser(merged);
+        })
+        .catch(() => {
+          localStorage.removeItem('cs2_fantasy_token');
+          localStorage.removeItem('cs2_fantasy_user');
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      localStorage.removeItem('cs2_fantasy_token');
+      localStorage.removeItem('cs2_fantasy_user');
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const handleLogout = () => {
