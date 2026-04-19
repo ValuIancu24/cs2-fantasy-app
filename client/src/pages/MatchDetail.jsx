@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/matches.css';
 
@@ -22,6 +22,8 @@ function MatchDetail() {
   const { tournamentId, seriesId } = useParams();
   const { apiBase } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPlayer = location.state?.from === 'player';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bannerUrl, setBannerUrl] = useState('');
@@ -50,9 +52,15 @@ function MatchDetail() {
   return (
     <div className="match-detail-page">
       <div className="back-btn-row">
-        <button className="btn-text" onClick={() => navigate(`/tournament/${tournamentId}/matches`)}>
-          ← Back to Matches
-        </button>
+        {fromPlayer ? (
+          <button className="btn-text" onClick={() => navigate(location.state.backUrl, { state: { scrollTo: location.state.scrollTo } })}>
+            ← Back to Player
+          </button>
+        ) : (
+          <button className="btn-text" onClick={() => navigate(`/tournament/${tournamentId}/matches`)}>
+            ← Back to Matches
+          </button>
+        )}
       </div>
 
       <div className="match-detail-banner">
