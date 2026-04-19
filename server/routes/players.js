@@ -61,6 +61,111 @@ router.get('/', (req, res) => {
   });
 });
 
+// GET /api/players/:playerId/stats?tournament_id=X
+router.get('/:playerId/stats', (req, res) => {
+  const playerId = req.params.playerId;
+  const tournamentId = req.query.tournament_id ? parseInt(req.query.tournament_id, 10) : null;
+  if (!tournamentId) return res.status(400).json({ message: 'tournament_id required' });
+
+  function mapsToWin(format) {
+    if (!format) return 1;
+    const m = format.match(/\d+/);
+    return Math.ceil((m ? parseInt(m[0]) : 1) / 2);
+  }
+
+  db.all(
+    `SELECT
+       ps.series_id,
+       ps.tournament_id,
+       t.name AS tournament_name,
+       datetime(COALESCE(t.start_date, t.last_synced)) AS sort_key,
+       sc.team1_name,
+       sc.team2_name,
+       sc.format,
+       sc.scheduled_at,
+       SUM(ps.kills)   AS kills,
+       SUM(ps.deaths)  AS deaths,
+       SUM(ps.assists) AS assists,
+       SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS kda_pts,
+       MAX(ps.team_win) AS team_win,
+       COUNT(DISTINCT ps.game_number) AS total_maps,
+       team_t.name AS player_team_name
+     FROM player_stats ps
+     JOIN tournaments t ON t.id = ps.tournament_id
+     LEFT JOIN series_cache sc ON sc.id = ps.series_id
+     JOIN player_tournaments pt ON pt.player_id = ps.player_id AND pt.tournament_id = ps.tournament_id
+     JOIN teams team_t ON team_t.id = pt.team_id AND team_t.tournament_id = pt.tournament_id
+     WHERE ps.player_id = ?
+       AND t.status = 'historical'
+       AND t.id != ?
+       AND datetime(COALESCE(t.start_date, t.last_synced)) < datetime(COALESCE(
+           (SELECT start_date FROM tournaments WHERE id = ?),
+           (SELECT last_synced FROM tournaments WHERE id = ?)
+         ))
+     GROUP BY ps.series_id
+     ORDER BY sort_key DESC, sc.scheduled_at ASC`,
+    [playerId, tournamentId, tournamentId, tournamentId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+
+      const tournMap = new Map();
+      for (const row of rows) {
+        if (!tournMap.has(row.tournament_id)) {
+          tournMap.set(row.tournament_id, {
+            id: row.tournament_id,
+            name: row.tournament_name,
+            sort_key: row.sort_key,
+            series: []
+          });
+        }
+        const teamPts = row.team_win === 1 ? 15 : row.team_win === 0 ? -15 : 0;
+        const totalPts = (row.kda_pts || 0) + teamPts;
+        const mw = mapsToWin(row.format);
+        const loserMaps = Math.max(0, (row.total_maps || 0) - mw);
+        let team1_score = null, team2_score = null;
+        if (row.team_win !== null) {
+          const playerIsTeam1 = row.player_team_name === row.team1_name;
+          const playerWon = row.team_win === 1;
+          team1_score = (playerWon === playerIsTeam1) ? mw : loserMaps;
+          team2_score = (playerWon === playerIsTeam1) ? loserMaps : mw;
+        }
+        tournMap.get(row.tournament_id).series.push({
+          series_id: row.series_id,
+          tournament_id: row.tournament_id,
+          scheduled_at: row.scheduled_at,
+          team1_name: row.team1_name,
+          team2_name: row.team2_name,
+          format: row.format,
+          kills: row.kills || 0,
+          deaths: row.deaths || 0,
+          assists: row.assists || 0,
+          kda_pts: row.kda_pts || 0,
+          team_pts: teamPts,
+          total_pts: totalPts,
+          team_win: row.team_win,
+          team1_score,
+          team2_score,
+        });
+      }
+
+      const tournaments = [...tournMap.values()]
+        .sort((a, b) => b.sort_key.localeCompare(a.sort_key))
+        .slice(0, 2)
+        .filter(t => t.series.length > 0);
+
+      for (const t of tournaments) {
+        t.series.sort((a, b) => {
+          if (!a.scheduled_at) return 1;
+          if (!b.scheduled_at) return -1;
+          return new Date(a.scheduled_at) - new Date(b.scheduled_at);
+        });
+      }
+
+      res.json({ tournaments });
+    }
+  );
+});
+
 // GET /api/players/:playerId?tournament_id=X
 router.get('/:playerId', (req, res) => {
   const playerId = parseInt(req.params.playerId, 10);
