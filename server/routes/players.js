@@ -3,7 +3,7 @@ const db = require('../database');
 
 const router = express.Router();
 
-const PLAYER_SELECT = `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, p.price, t.name AS team_name
+const PLAYER_SELECT = `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, COALESCE(pt.price, p.price) AS price, t.name AS team_name
        FROM players p
        JOIN player_tournaments pt ON pt.player_id = p.id
        LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id`;
