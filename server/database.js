@@ -60,13 +60,7 @@ function initDatabase() {
       FOREIGN KEY (league_id) REFERENCES leagues(id)
     )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS simulated_matches (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      match_id TEXT NOT NULL,
-      stage_id TEXT NOT NULL,
-      simulated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(match_id)
-    )`);
+    db.run(`DROP TABLE IF EXISTS simulated_matches`);
 
     db.run(`CREATE TABLE IF NOT EXISTS tournaments (
       id INTEGER PRIMARY KEY,
@@ -150,6 +144,7 @@ function initDatabase() {
     db.run(`ALTER TABLE players ADD COLUMN price INTEGER DEFAULT 190000`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN start_date TEXT`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});
+    db.run(`ALTER TABLE player_tournaments ADD COLUMN price INTEGER`, () => {});
 
     // Migrate player_tournaments to add ON DELETE CASCADE if missing
     db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='player_tournaments'`, [], (err, row) => {

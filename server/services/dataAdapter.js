@@ -319,11 +319,9 @@ async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
 async function calculatePrices(tournamentId) {
   console.log(`[DATA ADAPTER] Calculating prices for tournament ${tournamentId}...`);
 
-  // Reset all players in this tournament to default price
+  // Reset all players in this tournament to default price (per-tournament column)
   await dbRun(
-    `UPDATE players SET price = 190000 WHERE id IN (
-       SELECT player_id FROM player_tournaments WHERE tournament_id = ?
-     )`,
+    `UPDATE player_tournaments SET price = 190000 WHERE tournament_id = ?`,
     [tournamentId]
   );
 
@@ -360,7 +358,10 @@ async function calculatePrices(tournamentId) {
       price = Math.round(170000 + (score - minScore) / range * 70000);
     }
 
-    await dbRun(`UPDATE players SET price = ? WHERE id = ?`, [price, player_id]);
+    await dbRun(
+      `UPDATE player_tournaments SET price = ? WHERE player_id = ? AND tournament_id = ?`,
+      [price, player_id, tournamentId]
+    );
     calculated++;
   }
 
@@ -505,7 +506,7 @@ function dbAll(sql, params = []) {
 
 async function getPriceBreakdown(tournamentId) {
   const players = await dbAll(
-    `SELECT p.id, p.nickname, p.price, t.name AS team_name
+    `SELECT p.id, p.nickname, COALESCE(pt.price, p.price) AS price, t.name AS team_name
      FROM players p
      JOIN player_tournaments pt ON pt.player_id = p.id
      LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
