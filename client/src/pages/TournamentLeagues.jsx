@@ -118,7 +118,11 @@ function TournamentLeagues() {
       alert(data.message || 'Failed to join');
       return;
     }
-    setIntroModal({ leagueId });
+    setCreateToast('Successfully joined!');
+    setTimeout(() => {
+      setCreateToast('');
+      setIntroModal({ leagueId });
+    }, 1000);
   };
 
   const handleJoinPrivate = async () => {
@@ -143,7 +147,11 @@ function TournamentLeagues() {
     }
     setJoinModal(null);
     setJoinCode('');
-    setIntroModal({ leagueId: joinModal.leagueId });
+    setCreateToast('Successfully joined!');
+    setTimeout(() => {
+      setCreateToast('');
+      setIntroModal({ leagueId: joinModal.leagueId });
+    }, 1000);
   };
 
   const handleRename = async (leagueId) => {
