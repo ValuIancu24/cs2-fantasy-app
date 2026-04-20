@@ -146,6 +146,18 @@ function initDatabase() {
     db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});
     db.run(`ALTER TABLE player_tournaments ADD COLUMN price INTEGER`, () => {});
     db.run(`ALTER TABLE fantasy_teams ADD COLUMN captain_id TEXT`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN auto_sync_stats INTEGER DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE tournaments ADD COLUMN auto_sync_tournament INTEGER DEFAULT 0`, () => {});
+
+    db.run(`CREATE TABLE IF NOT EXISTS sync_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tournament_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      message TEXT,
+      ran_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+    )`);
 
     // Migrate player_tournaments to add ON DELETE CASCADE if missing
     db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='player_tournaments'`, [], (err, row) => {
