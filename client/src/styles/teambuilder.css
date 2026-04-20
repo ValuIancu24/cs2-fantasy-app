@@ -149,6 +149,37 @@
   margin-top: 0.2rem;
 }
 
+.tb-selected-chip.captain {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.tb-captain-btn {
+  background: transparent;
+  border: 1px solid rgba(210, 168, 255, 0.3);
+  border-radius: 4px;
+  color: rgba(210, 168, 255, 0.45);
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.1rem 0.38rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tb-captain-btn:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+}
+
+.tb-captain-btn.active {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
 @media (max-width: 900px) {
   .teambuilder {
     grid-template-columns: 1fr;

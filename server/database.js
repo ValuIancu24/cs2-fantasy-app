@@ -145,6 +145,7 @@ function initDatabase() {
     db.run(`ALTER TABLE tournaments ADD COLUMN start_date TEXT`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});
     db.run(`ALTER TABLE player_tournaments ADD COLUMN price INTEGER`, () => {});
+    db.run(`ALTER TABLE fantasy_teams ADD COLUMN captain_id TEXT`, () => {});
 
     // Migrate player_tournaments to add ON DELETE CASCADE if missing
     db.get(`SELECT sql FROM sqlite_master WHERE type='table' AND name='player_tournaments'`, [], (err, row) => {
