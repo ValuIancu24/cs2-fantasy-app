@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { FlagImg } from '../utils/flag.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
@@ -10,8 +10,10 @@ const LIMIT = 6;
 function Leaderboard() {
   const { tournamentId } = useParams();
   const { apiBase, user } = useContext(AuthContext);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromMyTeam = location.state?.from === 'my-team';
   const [leagueId, setLeagueId] = useState('');
   const [leagues, setLeagues] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
@@ -87,8 +89,11 @@ function Leaderboard() {
     <div className="leaderboard-page">
       <div className="panel leaderboard">
         <div className="leaderboard-header-row">
-          <button className="btn-text" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
-            ← Back to Leagues
+          <button className="btn-text" type="button" onClick={() => fromMyTeam
+            ? navigate(`/tournament/${tournamentId}/my-team?league=${leagueId}`)
+            : navigate(`/tournament/${tournamentId}/leagues`)
+          }>
+            {fromMyTeam ? '← Back to My Team' : '← Back to Leagues'}
           </button>
           <h2>{tournamentName ? `${tournamentName} — Leaderboard` : 'League Leaderboard'}</h2>
         </div>
@@ -97,7 +102,7 @@ function Leaderboard() {
           <SearchableSelect
             options={leagues.map(l => ({ value: l.id, label: l.name }))}
             value={leagueId}
-            onChange={val => { setLeagueId(val); setPage(1); }}
+            onChange={val => { setLeagueId(String(val)); setPage(1); setSearchParams({ league: String(val) }); }}
             placeholder="Select a league..."
           />
         </div>

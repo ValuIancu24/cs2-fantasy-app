@@ -19,6 +19,7 @@ function TeamBuilder() {
   const [teamName, setTeamName] = useState('');
   const [selected, setSelected] = useState([]);
   const [filter, setFilter] = useState('');
+  const [captain, setCaptain] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [tournamentId, setTournamentId] = useState(null);
@@ -63,6 +64,7 @@ function TeamBuilder() {
         const t = await teamRes.json();
         setTeamName(t.team_name);
         setSelected((t.lineup || []).map(String));
+        setCaptain(t.captain_id ? String(t.captain_id) : null);
       }
     };
     load();
@@ -102,6 +104,7 @@ function TeamBuilder() {
     const id = String(player.id);
     if (selected.includes(id)) {
       setSelected(selected.filter(s => s !== id));
+      if (captain === id) setCaptain(null);
     } else {
       if (!canSelect(player)) return;
       setSelected([...selected, id]);
@@ -139,6 +142,10 @@ function TeamBuilder() {
       setError('Budget exceeded');
       return;
     }
+    if (!captain) {
+      setError('You must select a captain');
+      return;
+    }
 
     const existingRes = await fetch(`${apiBase}/fantasy-teams/${leagueId}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -150,13 +157,13 @@ function TeamBuilder() {
       res = await fetch(`${apiBase}/fantasy-teams/${existing.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ teamName: teamName.trim(), lineup: selected })
+        body: JSON.stringify({ teamName: teamName.trim(), lineup: selected, captainId: captain })
       });
     } else {
       res = await fetch(`${apiBase}/fantasy-teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ leagueId: Number(leagueId), teamName: teamName.trim(), lineup: selected })
+        body: JSON.stringify({ leagueId: Number(leagueId), teamName: teamName.trim(), lineup: selected, captainId: captain })
       });
     }
 
@@ -213,15 +220,28 @@ function TeamBuilder() {
 
         {selected.length > 0 && (
           <div className="tb-selected-list">
-            {selectedPlayers.map(p => (
-              <div key={p.id} className="tb-selected-chip">
-                <span>{p.nickname}</span>
-                <span className="muted" style={{ fontSize: '0.75rem' }}>{p.team_name}</span>
-                <span className="tb-chip-price">{formatPrice(p.price)}</span>
-                <button className="btn-text small" onClick={() => togglePlayer(p)}>✕</button>
-              </div>
-            ))}
+            {selectedPlayers.map(p => {
+              const isCaptain = captain === String(p.id);
+              return (
+                <div key={p.id} className={`tb-selected-chip${isCaptain ? ' captain' : ''}`}>
+                  <button
+                    className={`tb-captain-btn${isCaptain ? ' active' : ''}`}
+                    title="Set as captain (×2 points)"
+                    onClick={() => setCaptain(isCaptain ? null : String(p.id))}
+                  >C</button>
+                  <span>{p.nickname}</span>
+                  <span className="muted" style={{ fontSize: '0.75rem' }}>{p.team_name}</span>
+                  <span className="tb-chip-price">{formatPrice(p.price)}</span>
+                  <button className="btn-text small" onClick={() => togglePlayer(p)}>✕</button>
+                </div>
+              );
+            })}
           </div>
+        )}
+        {selected.length > 0 && !captain && (
+          <p className="muted" style={{ fontSize: '0.8rem', color: '#fbbf24', marginTop: '-0.1rem' }}>
+            Select a captain — earns ×2 points
+          </p>
         )}
 
         <p className="muted" style={{ fontSize: '0.85rem' }}>
@@ -230,7 +250,7 @@ function TeamBuilder() {
 
         {error && <div className="error-text">{error}</div>}
         {success && <div className="success-text">{success}</div>}
-        <button className="btn-primary" onClick={saveTeam} disabled={selected.length !== 5 || !teamName.trim() || totalSpent > BUDGET_CAP}>
+        <button className="btn-primary" onClick={saveTeam} disabled={selected.length !== 5 || !teamName.trim() || totalSpent > BUDGET_CAP || !captain}>
           Save Team
         </button>
       </div>

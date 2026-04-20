@@ -19,7 +19,7 @@ function MyTeam() {
   const { tournamentId } = useParams();
   const { apiBase } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = localStorage.getItem('cs2_fantasy_token');
 
   const [leagues, setLeagues] = useState([]);
@@ -111,11 +111,11 @@ function MyTeam() {
             <SearchableSelect
               options={leagues.map(l => ({ value: l.id, label: l.name }))}
               value={selectedLeagueId}
-              onChange={val => setSelectedLeagueId(String(val))}
+              onChange={val => { setSelectedLeagueId(String(val)); setSearchParams({ league: String(val) }); }}
               placeholder="Select league..."
             />
             {selectedLeagueId && (
-              <button className="btn-outlined small" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${selectedLeagueId}`)}>
+              <button className="btn-outlined small" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${selectedLeagueId}`, { state: { from: 'my-team' } })}>
                 View Leaderboard
               </button>
             )}
@@ -153,14 +153,7 @@ function MyTeam() {
             </div>
             <div className="myteam-total-points">
               <span className="points-value">{breakdown.total_points}</span>
-              <span className="muted" style={{ fontSize: '0.75rem' }}>Total Points</span>
-              <span className="muted" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
-                {breakdown.rating_points} pts
-                {' + '}
-                <span className={breakdown.team_points >= 0 ? 'positive' : 'negative'}>
-                  {breakdown.team_points >= 0 ? '+' : ''}{breakdown.team_points} tp
-                </span>
-              </span>
+              <span className="muted" style={{ fontSize: '0.75rem' }}>Total Fantasy Points</span>
             </div>
           </div>
 
@@ -174,9 +167,12 @@ function MyTeam() {
                 tabIndex={0}
                 onKeyDown={e => e.key === 'Enter' && togglePlayer(player.id)}
               >
-                <span className="myteam-player-name">{player.nickname}</span>
+                <span className="myteam-player-name">
+                  {player.nickname}
+                  {player.is_captain && <span className="myteam-captain-badge">C</span>}
+                </span>
                 <span className="muted myteam-player-team">{player.team_name || '—'}</span>
-                <span className="myteam-player-pts">{player.total_points.toFixed(1)} Total Points</span>
+                <span className="myteam-player-pts">{player.total_points} Total Points</span>
                 <span className="myteam-series-count muted">
                   {player.series.filter(s => !s.upcoming && !s.ongoing).length} {player.series.filter(s => !s.upcoming && !s.ongoing).length === 1 ? 'series' : 'series'}
                 </span>
@@ -190,7 +186,10 @@ function MyTeam() {
             return (
               <div className="myteam-breakdown panel">
                 <div className="myteam-breakdown-header">
-                  <strong>{player.nickname}</strong>
+                  <strong>
+                    {player.nickname}
+                    {player.is_captain && <span className="myteam-captain-badge">C</span>}
+                  </strong>
                   <span className="muted" style={{ fontSize: '0.8rem' }}>{player.team_name}</span>
                 </div>
                 {player.series.length === 0 && (
@@ -223,13 +222,18 @@ function MyTeam() {
                             <span className="stat-a">{s.assists}A</span>
                           </span>
                           <span className="myteam-series-pts" style={{ color: '#a78bfa' }}>
-                            {s.series_points >= 0 ? '+' : ''}{s.series_points} Performance pts
+                            {s.series_points >= 0 ? '+' : ''}{s.series_points} Performance Points
                           </span>
                           <span className={`myteam-series-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`} title="Team Points">
                             {s.team_points >= 0 ? '+' : ''}{s.team_points} Team Points
                           </span>
                           <span className="myteam-series-pts" style={{ color: '#a78bfa', fontWeight: 700 }}>
-                            = {(s.series_points + s.team_points).toFixed(1)} Total Points
+                            = {(s.series_points + s.team_points)} Points
+                            {player.is_captain && (
+                              <span style={{ color: '#fbbf24' }}>
+                                {' '}×2 = {(s.series_points + s.team_points) * 2} Points
+                              </span>
+                            )}
                           </span>
                         </div>
                       )}
@@ -246,15 +250,15 @@ function MyTeam() {
                       &nbsp;·&nbsp;
                       {player.series.filter(s => !s.upcoming && !s.ongoing).map((s, i) => {
                         const fp = s.series_points + s.team_points;
+                        const displayFp = player.is_captain ? fp * 2 : fp;
                         return (
                           <span key={s.series_id}>
                             {i > 0 && <span style={{ color: '#888' }}> + </span>}
-                            <span style={{ color: '#a78bfa', fontWeight: 600 }}>{fp.toFixed(1)} Fantasy Points</span>
+                            <span style={{ color: player.is_captain ? '#fbbf24' : '#a78bfa', fontWeight: 600 }}>{displayFp} Points</span>
                           </span>
                         );
                       })}
-                      &nbsp;=&nbsp;
-                      <strong style={{ color: '#a78bfa' }}>{player.total_points} Total Fantasy Points</strong>
+                      &nbsp;=&nbsp;<strong style={{ color: '#a78bfa' }}>{player.total_points} Total Fantasy Points</strong>
                     </span>
                   </div>
                 )}
@@ -270,7 +274,10 @@ function MyTeam() {
                   const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
                   return (
                     <div key={`${s.player.id}-${s.series_id}`} className={`myteam-timeline-card ${s.ongoing ? 'ongoing' : s.upcoming ? 'upcoming' : ''}`}>
-                      <div className="myteam-timeline-player">{s.player.nickname}</div>
+                      <div className="myteam-timeline-player">
+                        {s.player.nickname}
+                        {s.player.is_captain && <span className="myteam-captain-badge">C</span>}
+                      </div>
                       <div className="myteam-timeline-matchup">{matchup}</div>
                       <div className="myteam-timeline-meta muted">
                         {s.format || ''}
@@ -296,7 +303,12 @@ function MyTeam() {
                             {s.team_points >= 0 ? '+' : ''}{s.team_points} Team Points
                           </div>
                           <div className="myteam-timeline-pts" style={{ color: '#a78bfa', fontWeight: 700 }}>
-                            = {(s.series_points + s.team_points).toFixed(1)} Total Points
+                            = {(s.series_points + s.team_points)} Points
+                            {s.player.is_captain && (
+                              <span style={{ color: '#fbbf24' }}>
+                                {' '}×2 = {(s.series_points + s.team_points) * 2} Points
+                              </span>
+                            )}
                           </div>
                         </>
                       )}

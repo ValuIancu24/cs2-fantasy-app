@@ -67,7 +67,7 @@ function makeXTick(data, dateKey, labels) {
       <g transform={`translate(${x},${y})`}>
         <text dy={12} textAnchor="middle" fill="#c4b5fd" fontSize={10}>{date}</text>
         {name && (
-          <text dy={26} textAnchor="middle" fill="#a78bfa" fontSize={9}>{name}</text>
+          <text dy={27} textAnchor="middle" fill="#a78bfa" fontSize={12} fontWeight={600}>{name}</text>
         )}
       </g>
     );
