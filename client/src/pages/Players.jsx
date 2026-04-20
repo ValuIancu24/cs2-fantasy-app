@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import PlayerFlipCard from '../components/PlayerFlipCard.jsx';
 import '../styles/players.css';
@@ -8,6 +8,9 @@ function Players() {
   const { tournamentId } = useParams();
   const { apiBase } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromIntro = location.state?.fromIntro;
+  const introLeagueId = location.state?.leagueId;
   const [players, setPlayers] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,9 +46,11 @@ function Players() {
   return (
     <div className="players-page">
       <div className="players-header">
-        <button className="btn-text" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
-          ← Back to Leagues
-        </button>
+        {fromIntro && (
+          <button className="btn-text" type="button" onClick={() => navigate(`/team-builder/${introLeagueId}`)}>
+            ← Back
+          </button>
+        )}
         <h1>{tournamentName ? `${tournamentName} — Players` : 'Players'}</h1>
       </div>
 
@@ -67,7 +72,12 @@ function Players() {
             {expanded[team] && (
               <div className="players-cards-grid">
                 {teamPlayers.map(p => (
-                  <PlayerFlipCard key={p.id} player={p} tournamentId={tournamentId} />
+                  <PlayerFlipCard
+                  key={p.id}
+                  player={p}
+                  tournamentId={tournamentId}
+                  navigateState={{ fromPlayers: true, fromIntro: !!fromIntro, leagueId: introLeagueId ?? null }}
+                />
                 ))}
               </div>
             )}
