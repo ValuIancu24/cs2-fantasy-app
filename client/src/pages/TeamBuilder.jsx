@@ -13,7 +13,7 @@ function formatPrice(price) {
 
 function TeamBuilder() {
   const { leagueId } = useParams();
-  const { apiBase } = useContext(AuthContext);
+  const { apiBase, setNavTournamentId } = useContext(AuthContext);
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [teamName, setTeamName] = useState('');
@@ -24,6 +24,14 @@ function TeamBuilder() {
   const [tournamentId, setTournamentId] = useState(null);
 
   const token = localStorage.getItem('cs2_fantasy_token');
+
+  useEffect(() => {
+    if (tournamentId) setNavTournamentId(tournamentId);
+  }, [tournamentId, setNavTournamentId]);
+
+  useEffect(() => {
+    return () => setNavTournamentId(null);
+  }, [setNavTournamentId]);
 
   useEffect(() => {
     const load = async () => {
@@ -172,7 +180,7 @@ function TeamBuilder() {
       <div className="panel">
         <div className="tb-header-row">
           <h2>Build Your Team</h2>
-          <button className="btn-text small" onClick={() => navigate(-1)}>← Back</button>
+          <button className="btn-text small" onClick={() => navigate(tournamentId ? `/tournament/${tournamentId}/my-team?league=${leagueId}` : '/my-fantasy')}>← Back</button>
         </div>
 
         <label>

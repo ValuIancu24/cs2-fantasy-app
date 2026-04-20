@@ -176,7 +176,7 @@ function MyTeam() {
               >
                 <span className="myteam-player-name">{player.nickname}</span>
                 <span className="muted myteam-player-team">{player.team_name || '—'}</span>
-                <span className="myteam-player-pts">{player.total_points.toFixed(1)} pts</span>
+                <span className="myteam-player-pts">{player.total_points.toFixed(1)} Total Points</span>
                 <span className="myteam-series-count muted">
                   {player.series.filter(s => !s.upcoming && !s.ongoing).length} {player.series.filter(s => !s.upcoming && !s.ongoing).length === 1 ? 'series' : 'series'}
                 </span>
@@ -222,11 +222,14 @@ function MyTeam() {
                             {' / '}
                             <span className="stat-a">{s.assists}A</span>
                           </span>
-                          <span className={`myteam-series-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                            {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                          <span className="myteam-series-pts" style={{ color: '#a78bfa' }}>
+                            {s.series_points >= 0 ? '+' : ''}{s.series_points} Performance pts
                           </span>
                           <span className={`myteam-series-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`} title="Team Points">
-                            {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
+                            {s.team_points >= 0 ? '+' : ''}{s.team_points} Team Points
+                          </span>
+                          <span className="myteam-series-pts" style={{ color: '#a78bfa', fontWeight: 700 }}>
+                            = {(s.series_points + s.team_points).toFixed(1)} Total Points
                           </span>
                         </div>
                       )}
@@ -241,13 +244,17 @@ function MyTeam() {
                       {player.series.reduce((s, r) => s + r.deaths, 0)}D /&nbsp;
                       {player.series.reduce((s, r) => s + r.assists, 0)}A
                       &nbsp;·&nbsp;
-                      <strong>{player.rating_points} pts</strong>
-                      &nbsp;+&nbsp;
-                      <span className={player.team_points >= 0 ? 'positive' : 'negative'}>
-                        {player.team_points >= 0 ? '+' : ''}{player.team_points} tp
-                      </span>
+                      {player.series.filter(s => !s.upcoming && !s.ongoing).map((s, i) => {
+                        const fp = s.series_points + s.team_points;
+                        return (
+                          <span key={s.series_id}>
+                            {i > 0 && <span style={{ color: '#888' }}> + </span>}
+                            <span style={{ color: '#a78bfa', fontWeight: 600 }}>{fp.toFixed(1)} Fantasy Points</span>
+                          </span>
+                        );
+                      })}
                       &nbsp;=&nbsp;
-                      <strong>{player.total_points} total</strong>
+                      <strong style={{ color: '#a78bfa' }}>{player.total_points} Total Fantasy Points</strong>
                     </span>
                   </div>
                 )}
@@ -282,11 +289,14 @@ function MyTeam() {
                             {' / '}
                             <span className="stat-a">{s.assists}A</span>
                           </div>
-                          <div className={`myteam-timeline-pts ${s.series_points >= 0 ? 'positive' : 'negative'}`}>
-                            {s.series_points >= 0 ? '+' : ''}{s.series_points} pts
+                          <div className="myteam-timeline-pts" style={{ color: '#a78bfa' }}>
+                            {s.series_points >= 0 ? '+' : ''}{s.series_points} Performance Points
                           </div>
                           <div className={`myteam-timeline-pts ${s.team_points >= 0 ? 'positive' : 'negative'}`}>
-                            {s.team_points >= 0 ? '+' : ''}{s.team_points} tp
+                            {s.team_points >= 0 ? '+' : ''}{s.team_points} Team Points
+                          </div>
+                          <div className="myteam-timeline-pts" style={{ color: '#a78bfa', fontWeight: 700 }}>
+                            = {(s.series_points + s.team_points).toFixed(1)} Total Points
                           </div>
                         </>
                       )}

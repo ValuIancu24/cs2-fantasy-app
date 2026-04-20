@@ -42,6 +42,8 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 function NavLinks({ user }) {
   const tournamentMatch = useMatch('/tournament/:tournamentId/*');
+  const teamBuilderMatch = useMatch('/team-builder/:leagueId');
+  const { navTournamentId } = React.useContext(AuthContext);
   const tournamentId = tournamentMatch?.params?.tournamentId;
 
   return (
@@ -59,6 +61,9 @@ function NavLinks({ user }) {
               <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
             </>
           )}
+          {teamBuilderMatch && navTournamentId && (
+            <Link to={`/tournament/${navTournamentId}/players`}>Players</Link>
+          )}
           {user.role === 'admin' && <Link to="/admin">Admin</Link>}
         </>
       )}
@@ -69,6 +74,7 @@ function NavLinks({ user }) {
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [navTournamentId, setNavTournamentId] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('cs2_fantasy_user');
@@ -108,7 +114,7 @@ function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, apiBase: API_BASE }}>
+    <AuthContext.Provider value={{ user, setUser, loading, apiBase: API_BASE, navTournamentId, setNavTournamentId }}>
       <div className="app-root">
         <header className="app-header">
           {user
