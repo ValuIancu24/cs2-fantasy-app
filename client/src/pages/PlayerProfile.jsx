@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
@@ -37,17 +37,39 @@ function ChartSelector({ selector, setSelector, options, singleTournament, singl
   );
 }
 
-function makeBarLabel(barData, shouldRender) {
-  return ({ x, y, width, height, index, value }) => {
-    if (!value) return null;
-    const d = barData[index];
-    if (!d || !shouldRender(d)) return null;
-    const total = d.total_pts;
-    const labelY = value > 0 ? y - 6 : y + height + 12;
+function BarLabel({ x, y, width, height, value }) {
+  if (value === undefined || value === null) return null;
+  const labelY = value >= 0 ? y - 6 : y + height + 12;
+  const fill = value === 0 ? '#9ca3af' : '#e9d5ff';
+  const text = value > 0 ? `+${value}` : `${value}`;
+  return (
+    <text x={x + width / 2} y={labelY} textAnchor="middle" fill={fill} fontSize={10} fontWeight={700}>
+      {text}
+    </text>
+  );
+}
+
+function makeTournLabels(sel, tournaments) {
+  if (sel !== 'last2' || tournaments.length !== 2) return null;
+  const t1len = tournaments[1]?.series?.length || 0;
+  const t0len = tournaments[0]?.series?.length || 0;
+  return {
+    [Math.round((t1len - 1) / 2)]: tournaments[1]?.name,
+    [Math.round(t1len + (t0len - 1) / 2)]: tournaments[0]?.name,
+  };
+}
+
+function makeXTick(data, dateKey, labels) {
+  return ({ x, y, payload }) => {
+    const date = data[payload.value]?.[dateKey] || '';
+    const name = labels?.[payload.value];
     return (
-      <text x={x + width / 2} y={labelY} textAnchor="middle" fill="#e9d5ff" fontSize={10} fontWeight={700}>
-        {total > 0 ? `+${total}` : `${total}`}
-      </text>
+      <g transform={`translate(${x},${y})`}>
+        <text dy={12} textAnchor="middle" fill="#c4b5fd" fontSize={10}>{date}</text>
+        {name && (
+          <text dy={26} textAnchor="middle" fill="#a78bfa" fontSize={9}>{name}</text>
+        )}
+      </g>
     );
   };
 }
@@ -73,10 +95,9 @@ function PlayerProfile() {
   const [loading, setLoading] = useState(true);
 
   const [sel1, setSel1] = useState('last2');
+  const [sel2, setSel2] = useState('last2');
   const [sel3, setSel3] = useState('last2');
   const [sel4, setSel4] = useState('last2');
-
-  const hoveredBarRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
@@ -101,8 +122,8 @@ function PlayerProfile() {
     if (tournaments.length < 2) return [];
     return [
       { value: 'last2', label: 'Last 2 tournaments' },
-      { value: '0',     label: tournaments[0]?.name || 'Tournament 1' },
-      { value: '1',     label: tournaments[1]?.name || 'Tournament 2' },
+      { value: '1',     label: tournaments[1]?.name || 'Tournament 1' },
+      { value: '0',     label: tournaments[0]?.name || 'Tournament 2' },
     ];
   }, [tournaments]);
 
@@ -118,12 +139,8 @@ function PlayerProfile() {
     ? (tournaments[1]?.series?.length || 0) - 0.5
     : null;
 
-  // Chart 2 — radar always uses last 2
-  const radarSeries = useMemo(() => {
-    const older = tournaments[1]?.series || [];
-    const newer = tournaments[0]?.series || [];
-    return [...older, ...newer];
-  }, [tournaments]);
+  // Chart 2 — radar
+  const radarSeries = useMemo(() => buildSeries(tournaments, sel2), [tournaments, sel2]);
 
   const radarData = useMemo(() => {
     if (!radarSeries.length) return [];
@@ -140,19 +157,18 @@ function PlayerProfile() {
 
   // Chart 3 — vertical bar
   const series3 = useMemo(() => buildSeries(tournaments, sel3), [tournaments, sel3]);
-  const barData = useMemo(() => series3.map(s => ({
+  const barData = useMemo(() => series3.map((s, i) => ({
     ...s,
+    idx: i,
     dateLabel: fmtDate(s.scheduled_at),
-    seg_kda_pos:  Math.max(s.kda_pts || 0, 0),
-    seg_team_pos: s.team_win === 1 ? 15 : 0,
-    seg_kda_neg:  Math.min(s.kda_pts || 0, 0),
-    seg_team_neg: s.team_win === 0 ? -15 : 0,
   })), [series3]);
 
-  const labelKdaPos  = useMemo(() => makeBarLabel(barData, d => d.team_win !== 1 && d.kda_pts > 0), [barData]);
-  const labelTeamPos = useMemo(() => makeBarLabel(barData, d => d.team_win === 1), [barData]);
-  const labelKdaNeg  = useMemo(() => makeBarLabel(barData, d => d.team_win === null && d.kda_pts < 0), [barData]);
-  const labelTeamNeg = useMemo(() => makeBarLabel(barData, d => d.team_win === 0 && d.kda_pts <= 0), [barData]);
+  const splitIdx3 = (sel3 === 'last2' && tournaments.length === 2)
+    ? (tournaments[1]?.series?.length || 0) - 0.5
+    : null;
+
+  const tournLabels1 = useMemo(() => makeTournLabels(sel1, tournaments), [sel1, tournaments]);
+  const tournLabels3 = useMemo(() => makeTournLabels(sel3, tournaments), [sel3, tournaments]);
 
   // Chart 4 — doughnut
   const series4 = useMemo(() => buildSeries(tournaments, sel4), [tournaments, sel4]);
@@ -165,12 +181,16 @@ function PlayerProfile() {
     return out;
   }, [series4]);
 
-  useEffect(() => {
-    const scrollTo = location.state?.scrollTo;
-    if (!scrollTo || loading) return;
-    const el = document.getElementById(scrollTo);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [location.state?.scrollTo, loading]);
+  const handleBack = () => {
+    if (location.state?.from === 'build-team') {
+      navigate(`/team-builder/${location.state.leagueId}`);
+    } else {
+      const restoredState = (location.state?.fromIntro && location.state?.leagueId)
+        ? { fromIntro: true, leagueId: location.state.leagueId }
+        : null;
+      navigate(`/tournament/${tournamentId}/players`, { state: restoredState });
+    }
+  };
 
   const navigateToSeries = (s, chartId) => {
     if (s?.series_id && s?.tournament_id) {
@@ -190,8 +210,20 @@ function PlayerProfile() {
     return (
       <div className="chart-tooltip">
         <div className="chart-tooltip-title">{d.team1_name} {score} {d.team2_name}</div>
-        <div>K/D/A: {d.kills}/{d.deaths}/{d.assists}</div>
-        <div>Fantasy pts: <strong>{d.total_pts}</strong></div>
+        <div>
+          <span style={{ color: '#22c55e' }}>K</span>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <span style={{ color: '#ef4444' }}>D</span>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <span style={{ color: '#eab308' }}>A</span>
+          {': '}
+          <strong style={{ color: '#22c55e' }}>{d.kills}</strong>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <strong style={{ color: '#ef4444' }}>{d.deaths}</strong>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <strong style={{ color: '#eab308' }}>{d.assists}</strong>
+        </div>
+        <div>Fantasy pts: <strong style={{ color: '#a78bfa' }}>{d.total_pts}</strong></div>
       </div>
     );
   };
@@ -201,16 +233,24 @@ function PlayerProfile() {
     const d = payload[0]?.payload;
     if (!d) return null;
     const score = d.team1_score != null ? `${d.team1_score}–${d.team2_score}` : '?';
-    const hovered = hoveredBarRef.current;
+    const kdaPts = d.kda_pts ?? 0;
     return (
       <div className="chart-tooltip">
         <div className="chart-tooltip-title">{d.team1_name} {score} {d.team2_name}</div>
-        <div>K/D/A: {d.kills}/{d.deaths}/{d.assists}</div>
-        {hovered === 'kda'
-          ? <div>Perf pts: <strong>{d.kda_pts}</strong></div>
-          : <div>Team pts: <strong>{d.team_pts > 0 ? '+' : ''}{d.team_pts}</strong></div>
-        }
-        <div>Total: <strong>{d.total_pts}</strong></div>
+        <div>
+          <span style={{ color: '#22c55e' }}>K</span>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <span style={{ color: '#ef4444' }}>D</span>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <span style={{ color: '#eab308' }}>A</span>
+          {': '}
+          <strong style={{ color: '#22c55e' }}>{d.kills}</strong>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <strong style={{ color: '#ef4444' }}>{d.deaths}</strong>
+          <span style={{ color: '#9ca3af' }}>/</span>
+          <strong style={{ color: '#eab308' }}>{d.assists}</strong>
+        </div>
+        <div>Perf pts: <strong style={{ color: '#a78bfa' }}>{kdaPts > 0 ? `+${kdaPts}` : kdaPts}</strong></div>
       </div>
     );
   };
@@ -239,7 +279,7 @@ function PlayerProfile() {
 
   return (
     <div className="player-profile-page">
-      <button className="btn-text" type="button" onClick={() => navigate(-1)}>← Back</button>
+      <button className="btn-text" type="button" onClick={handleBack}>← Back</button>
 
       {loading && <p className="muted" style={{ marginTop: '1rem' }}>Loading...</p>}
       {!loading && !player && <p className="muted" style={{ marginTop: '1rem' }}>Player not found.</p>}
@@ -250,6 +290,10 @@ function PlayerProfile() {
           <span className="muted player-profile-team">{player.team_name || '—'}</span>
           <span className="player-price player-profile-price">{fmtPrice(player.price)}</span>
         </div>
+      )}
+
+      {player && !loading && !hasTournaments && (
+        <p className="muted" style={{ marginTop: '1.5rem' }}>No statistics available.</p>
       )}
 
       {player && !loading && hasTournaments && (
@@ -279,13 +323,13 @@ function PlayerProfile() {
                   type="number"
                   domain={[-0.5, Math.max(lineData.length - 0.5, 0.5)]}
                   ticks={lineData.map(d => d.idx)}
-                  tickFormatter={i => lineData[i]?.date || ''}
-                  tick={{ fill: '#c4b5fd', fontSize: 10 }}
+                  tick={makeXTick(lineData, 'date', tournLabels1)}
                   tickLine={false}
+                  height={tournLabels1 ? 42 : 20}
                   interval={0}
                 />
                 <YAxis tick={{ fill: '#c4b5fd', fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
-                <Tooltip content={renderLineTooltip} />
+                <Tooltip content={renderLineTooltip} wrapperStyle={{ background: 'none', border: 'none', boxShadow: 'none', padding: 0 }} />
                 {splitIdx1 !== null && (
                   <ReferenceLine x={splitIdx1} stroke="rgba(210,168,255,0.4)" strokeDasharray="4 3" />
                 )}
@@ -300,31 +344,41 @@ function PlayerProfile() {
                 />
               </LineChart>
             </ResponsiveContainer>
+            <p style={{ textAlign: 'center', margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+              Total matches: <strong style={{ color: '#c4b5fd' }}>{lineData.length}</strong>
+            </p>
           </div>
 
-          {/* Chart 2 — Radar: Average Stats (always last 2, no selector) */}
+          {/* Chart 2 — Radar: Average Stats */}
           <div className="chart-panel">
             <div className="chart-title">
               Average Stats
-              <span className="chart-subtitle">
-                {singleTournament ? tournaments[0].name : 'Last 2 tournaments'}
-              </span>
+              <div className="chart-selector-inline">
+                <ChartSelector
+                  selector={sel2} setSelector={setSel2}
+                  options={selectorOptions}
+                  singleTournament={singleTournament} singleName={singleName}
+                />
+              </div>
             </div>
             <ResponsiveContainer width="100%" height={440}>
               <RadarChart data={radarData} outerRadius="72%" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
                 <PolarGrid stroke="rgba(255,255,255,0.1)" />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#c4b5fd', fontSize: 10 }} />
-                <PolarRadiusAxis tick={{ fill: 'rgba(196,181,253,0.4)', fontSize: 8 }} />
+                <PolarRadiusAxis tick={false} axisLine={false} tickLine={false} />
                 <Radar dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.25} isAnimationActive={false} />
-                <Tooltip content={renderRadarTooltip} />
+                <Tooltip content={renderRadarTooltip} wrapperStyle={{ background: 'none', border: 'none', boxShadow: 'none', padding: 0 }} />
               </RadarChart>
             </ResponsiveContainer>
+            <p style={{ textAlign: 'center', margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+              Total matches: <strong style={{ color: '#c4b5fd' }}>{radarSeries.length}</strong>
+            </p>
           </div>
 
-          {/* Chart 3 — Vertical Bar: Points Breakdown */}
+          {/* Chart 3 — Vertical Bar: Performance Points per Match */}
           <div id="chart-bar" className="chart-panel">
             <div className="chart-title">
-              Points Breakdown per Match
+              Performance Points per Match
               <div className="chart-selector-inline">
                 <ChartSelector
                   selector={sel3} setSelector={setSel3}
@@ -340,36 +394,46 @@ function PlayerProfile() {
                 margin={{ top: 24, right: 16, left: 0, bottom: 4 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
-                <XAxis dataKey="dateLabel" tick={{ fill: '#c4b5fd', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="idx"
+                  type="number"
+                  domain={[-0.5, Math.max(barData.length - 0.5, 0.5)]}
+                  ticks={barData.map(d => d.idx)}
+                  tick={makeXTick(barData, 'dateLabel', tournLabels3)}
+                  tickLine={false}
+                  axisLine={false}
+                  height={tournLabels3 ? 42 : 20}
+                  interval={0}
+                />
                 <YAxis tick={{ fill: '#c4b5fd', fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
                 <ReferenceLine y={0} stroke="rgba(255,255,255,0.25)" />
-                <Tooltip content={renderBarTooltip} />
-                <Bar dataKey="seg_kda_pos" stackId="a" fill="#a78bfa"
-                  onMouseEnter={() => { hoveredBarRef.current = 'kda'; }}
-                  onClick={d => navigateToSeries(d, 'chart-bar')}
-                  isAnimationActive={false}>
-                  <LabelList content={labelKdaPos} />
-                </Bar>
-                <Bar dataKey="seg_team_pos" stackId="a" fill="#22c55e"
-                  onMouseEnter={() => { hoveredBarRef.current = 'team'; }}
-                  onClick={d => navigateToSeries(d, 'chart-bar')}
-                  isAnimationActive={false}>
-                  <LabelList content={labelTeamPos} />
-                </Bar>
-                <Bar dataKey="seg_kda_neg" stackId="a" fill="#a78bfa"
-                  onMouseEnter={() => { hoveredBarRef.current = 'kda'; }}
-                  onClick={d => navigateToSeries(d, 'chart-bar')}
-                  isAnimationActive={false}>
-                  <LabelList content={labelKdaNeg} />
-                </Bar>
-                <Bar dataKey="seg_team_neg" stackId="a" fill="#ef4444"
-                  onMouseEnter={() => { hoveredBarRef.current = 'team'; }}
-                  onClick={d => navigateToSeries(d, 'chart-bar')}
-                  isAnimationActive={false}>
-                  <LabelList content={labelTeamNeg} />
+                {splitIdx3 !== null && (
+                  <ReferenceLine x={splitIdx3} stroke="rgba(210,168,255,0.4)" strokeDasharray="4 3" />
+                )}
+                <Tooltip content={renderBarTooltip} wrapperStyle={{ background: 'none', border: 'none', boxShadow: 'none', padding: 0 }} />
+                <Bar
+                  dataKey="kda_pts"
+                  minPointSize={4}
+                  background={{ fill: 'transparent' }}
+                  shape={(props) => {
+                    const { x, y, width, height, value, background: bg, payload } = props;
+                    const fill = (value ?? 0) === 0 ? '#6b7280' : '#a78bfa';
+                    return (
+                      <g style={{ cursor: 'pointer' }} onClick={() => navigateToSeries(payload, 'chart-bar')}>
+                        <rect x={bg?.x ?? x} y={bg?.y ?? 0} width={bg?.width ?? width} height={bg?.height ?? height} fill="transparent" />
+                        <rect x={x} y={y} width={width} height={height} fill={fill} />
+                      </g>
+                    );
+                  }}
+                  isAnimationActive={false}
+                >
+                  <LabelList content={BarLabel} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            <p style={{ textAlign: 'center', margin: '0.5rem 0 0', fontSize: '0.82rem', color: '#9ca3af' }}>
+              Total matches: <strong style={{ color: '#c4b5fd' }}>{barData.length}</strong>
+            </p>
           </div>
 
           {/* Chart 4 — Doughnut: Win/Loss Ratio */}
@@ -393,8 +457,8 @@ function PlayerProfile() {
                     data={doughnutData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={82}
+                    innerRadius={90}
+                    outerRadius={140}
                     dataKey="value"
                     paddingAngle={2}
                     isAnimationActive={false}
@@ -403,8 +467,25 @@ function PlayerProfile() {
                       <Cell key={i} fill={entry.name === 'Wins' ? '#22c55e' : '#ef4444'} />
                     ))}
                   </Pie>
-                  <Tooltip content={renderDoughnutTooltip} />
-                  <Legend formatter={v => <span style={{ color: '#c4b5fd', fontSize: '0.82rem' }}>{v}</span>} />
+                  <Tooltip content={renderDoughnutTooltip} wrapperStyle={{ background: 'none', border: 'none', boxShadow: 'none', padding: 0 }} />
+                  <Legend
+                    formatter={v => <span style={{ color: '#c4b5fd', fontSize: '0.82rem' }}>{v}</span>}
+                    content={({ payload }) => (
+                      <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1.2rem', marginBottom: '0.5rem' }}>
+                          {payload.map((entry, i) => (
+                            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem', color: '#c4b5fd' }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 2, background: entry.color, display: 'inline-block' }} />
+                              {entry.value}
+                            </span>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: '0.82rem', color: '#9ca3af' }}>
+                          Total matches: <strong style={{ color: '#c4b5fd' }}>{doughnutData.reduce((s, r) => s + r.value, 0)}</strong>
+                        </span>
+                      </div>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

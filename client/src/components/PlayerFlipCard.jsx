@@ -5,7 +5,7 @@ function formatPrice(price) {
   return `${Math.round((price ?? 190000) / 1000)}K`;
 }
 
-function PlayerFlipCard({ player, tournamentId, isSelected = false, disabled = false, children }) {
+function PlayerFlipCard({ player, tournamentId, isSelected = false, disabled = false, navigateState = null, children }) {
   const [flipped, setFlipped] = useState(false);
   const navigate = useNavigate();
 
@@ -29,7 +29,7 @@ function PlayerFlipCard({ player, tournamentId, isSelected = false, disabled = f
               type="button"
               onClick={e => {
                 e.stopPropagation();
-                if (tournamentId) navigate(`/tournament/${tournamentId}/players/${player.id}`);
+                if (tournamentId) navigate(`/tournament/${tournamentId}/players/${player.id}`, navigateState ? { state: navigateState } : undefined);
               }}
             >
               Player Profile

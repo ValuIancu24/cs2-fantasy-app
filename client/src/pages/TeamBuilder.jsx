@@ -54,7 +54,7 @@ function TeamBuilder() {
       if (teamRes.ok) {
         const t = await teamRes.json();
         setTeamName(t.team_name);
-        setSelected(JSON.parse(t.lineup || '[]').map(String));
+        setSelected((t.lineup || []).map(String));
       }
     };
     load();
@@ -257,6 +257,7 @@ function TeamBuilder() {
                       tournamentId={tournamentId}
                       isSelected={isSelected}
                       disabled={disabled}
+                      navigateState={{ from: 'build-team', leagueId }}
                     >
                       <button
                         className={`btn-select${isSelected ? ' selected' : ''}`}

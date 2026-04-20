@@ -31,6 +31,10 @@ function TournamentLeagues() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
 
+  // Intro modal (shown after create/join)
+  const [introModal, setIntroModal] = useState(null);
+  const [createToast, setCreateToast] = useState('');
+
   // Admin edit state
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -92,13 +96,12 @@ function TournamentLeagues() {
 
     setCreateName('');
     setIsPublic(true);
-    if (data.invite_code) {
-      setNewInviteCode(data.invite_code);
-      setCreateMessage('Private league created! Share the invite code below.');
-    } else {
-      setCreateMessage('League created successfully!');
-    }
-    fetchLeagues();
+    const msg = data.invite_code ? 'Private league created!' : 'League created!';
+    setCreateToast(msg);
+    setTimeout(() => {
+      setCreateToast('');
+      setIntroModal({ leagueId: data.id });
+    }, 1000);
   };
 
   const handleJoinPublic = async leagueId => {
@@ -115,7 +118,7 @@ function TournamentLeagues() {
       alert(data.message || 'Failed to join');
       return;
     }
-    navigate(`/team-builder/${leagueId}`);
+    setIntroModal({ leagueId });
   };
 
   const handleJoinPrivate = async () => {
@@ -140,7 +143,7 @@ function TournamentLeagues() {
     }
     setJoinModal(null);
     setJoinCode('');
-    navigate(`/team-builder/${joinModal.leagueId}`);
+    setIntroModal({ leagueId: joinModal.leagueId });
   };
 
   const handleRename = async (leagueId) => {
@@ -416,6 +419,53 @@ function TournamentLeagues() {
           )}
         </div>
       </div>
+
+      {/* Create toast */}
+      {createToast && (
+        <div style={{
+          position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(30, 20, 60, 0.97)', border: '1px solid rgba(167,139,250,0.4)',
+          borderRadius: '8px', padding: '0.65rem 1.25rem',
+          color: '#a78bfa', fontSize: '0.9rem', fontWeight: 600,
+          zIndex: 200, pointerEvents: 'none',
+        }}>
+          {createToast}
+        </div>
+      )}
+
+      {/* Intro modal — shown after create/join */}
+      {introModal && (
+        <div
+          className="tl-modal-backdrop"
+          onClick={() => { setIntroModal(null); navigate(`/team-builder/${introModal.leagueId}`); }}
+        >
+          <div className="tl-modal" onClick={e => e.stopPropagation()}>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: '#f0eaff' }}>
+              Check out the players page to get an idea of which options fit best.
+            </p>
+            <div className="tl-modal-actions">
+              <button
+                className="btn-outlined small"
+                onClick={() => { setIntroModal(null); navigate(`/team-builder/${introModal.leagueId}`); }}
+              >
+                I'll check it out later
+              </button>
+              <button
+                className="btn-primary small"
+                onClick={() => {
+                  const lid = introModal.leagueId;
+                  setIntroModal(null);
+                  navigate(`/tournament/${tournamentId}/players`, {
+                    state: { fromIntro: true, leagueId: lid },
+                  });
+                }}
+              >
+                Take me there
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Join with code modal */}
       {joinModal && (
