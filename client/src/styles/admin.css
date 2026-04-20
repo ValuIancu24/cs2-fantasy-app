@@ -136,6 +136,16 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+.btn-tiny.btn-active-sync {
+  border-color: rgba(96, 230, 184, 0.5);
+  background: rgba(96, 230, 184, 0.1);
+  color: #60e6b8;
+}
+
+.btn-tiny.btn-active-sync:hover {
+  background: rgba(96, 230, 184, 0.18);
+}
+
 .player-aliases-box {
   padding: 0.4rem 0.5rem 0.5rem 1.5rem;
   display: flex;

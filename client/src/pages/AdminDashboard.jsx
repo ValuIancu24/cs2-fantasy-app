@@ -48,6 +48,10 @@ function AdminDashboard() {
   const [breakdownMessage, setBreakdownMessage] = useState('');
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
 
+  // Auto-sync
+  const [syncLogs, setSyncLogs] = useState({});
+  const [autoSyncToggles, setAutoSyncToggles] = useState({});
+
   // Wipe
   const [wiping, setWiping] = useState(false);
   const [wipeMessage, setWipeMessage] = useState('');
@@ -89,6 +93,49 @@ function AdminDashboard() {
     fetchStats();
     fetchAllTournaments();
   }, []);
+
+  const fetchSyncLogs = async (id) => {
+    const res = await fetch(`${apiBase}/admin/tournaments/${id}/sync-logs`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    const lastStats = rows.find(r => r.type === 'stats');
+    const lastTournament = rows.find(r => r.type === 'tournament');
+    setSyncLogs(prev => ({ ...prev, [id]: { stats: lastStats || null, tournament: lastTournament || null } }));
+  };
+
+  const toggleAutoSync = async (id, type, currentVal) => {
+    const enabled = !currentVal;
+    const res = await fetch(`${apiBase}/admin/tournaments/${id}/auto-sync`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, enabled })
+    });
+    if (res.ok) {
+      const col = type === 'stats' ? 'auto_sync_stats' : 'auto_sync_tournament';
+      setAutoSyncToggles(prev => ({ ...prev, [`${id}_${type}`]: enabled }));
+      setAllTournaments(prev => prev.map(t => t.id === id ? { ...t, [col]: enabled ? 1 : 0 } : t));
+      if (enabled) fetchSyncLogs(id);
+    }
+  };
+
+  useEffect(() => {
+    allTournaments.filter(t => t.status === 'active').forEach(t => {
+      fetchSyncLogs(t.id);
+    });
+  }, [allTournaments.length]);
+
+  useEffect(() => {
+    const activeSyncing = allTournaments.filter(
+      t => t.status === 'active' && (t.auto_sync_stats || t.auto_sync_tournament)
+    );
+    if (activeSyncing.length === 0) return;
+    const interval = setInterval(() => {
+      activeSyncing.forEach(t => fetchSyncLogs(t.id));
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [allTournaments]);
 
   const updateTournamentStatus = async (id, patch) => {
     setTournamentStatusMsg('');
@@ -674,6 +721,7 @@ function AdminDashboard() {
               <th style={{ textAlign: 'left' }}>Turneu</th>
               <th>Status</th>
               <th>Vizibil</th>
+              <th>Auto-Sync</th>
               <th>Acțiuni</th>
             </tr>
           </thead>
@@ -697,6 +745,48 @@ function AdminDashboard() {
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: '0.85rem' }}>{t.is_visible === 0 ? '🔒 Hidden' : '👁 Visible'}</span>
+                </td>
+                <td style={{ textAlign: 'center', minWidth: '160px' }}>
+                  {t.status === 'active' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
+                      {/* Stats toggle */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', width: '100%' }}>
+                        <button
+                          className={`btn-tiny${t.auto_sync_stats ? ' btn-active-sync' : ' btn-ghost'}`}
+                          onClick={() => toggleAutoSync(t.id, 'stats', t.auto_sync_stats)}
+                        >
+                          {t.auto_sync_stats ? '⏸ Stats ON' : '▶ Stats OFF'}
+                        </button>
+                        {syncLogs[t.id]?.stats && (
+                          <span style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'center' }}>
+                            {syncLogs[t.id].stats.status === 'success' ? '✓' : '✗'} {new Date(syncLogs[t.id].stats.ran_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {syncLogs[t.id].stats.status === 'error' && (
+                              <span style={{ color: '#ff6b81', marginLeft: '0.25rem' }}>{syncLogs[t.id].stats.message}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {/* Tournament toggle */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', width: '100%' }}>
+                        <button
+                          className={`btn-tiny${t.auto_sync_tournament ? ' btn-active-sync' : ' btn-ghost'}`}
+                          onClick={() => toggleAutoSync(t.id, 'tournament', t.auto_sync_tournament)}
+                        >
+                          {t.auto_sync_tournament ? '⏸ Turneu ON' : '▶ Turneu OFF'}
+                        </button>
+                        {syncLogs[t.id]?.tournament && (
+                          <span style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'center' }}>
+                            {syncLogs[t.id].tournament.status === 'success' ? '✓' : '✗'} {new Date(syncLogs[t.id].tournament.ran_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {syncLogs[t.id].tournament.status === 'error' && (
+                              <span style={{ color: '#ff6b81', marginLeft: '0.25rem' }}>{syncLogs[t.id].tournament.message}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="muted" style={{ fontSize: '0.75rem' }}>—</span>
+                  )}
                 </td>
                 <td style={{ textAlign: 'right', paddingRight: '0.25rem' }}>
                   <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>

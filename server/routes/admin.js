@@ -240,7 +240,7 @@ router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) =>
 // GET all tournaments (for admin management)
 router.get('/tournaments', authMiddleware, requireAdmin, (req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url FROM tournaments ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, auto_sync_stats, auto_sync_tournament FROM tournaments ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });
@@ -280,6 +280,44 @@ router.patch('/tournaments/:id/status', authMiddleware, requireAdmin, (req, res)
     if (this.changes === 0) return res.status(404).json({ message: 'Tournament not found' });
     res.json({ success: true });
   });
+});
+
+// PATCH /api/admin/tournaments/:id/auto-sync — toggle auto_sync_stats or auto_sync_tournament
+router.patch('/tournaments/:id/auto-sync', authMiddleware, requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
+
+  const { type, enabled } = req.body;
+  if (!['stats', 'tournament'].includes(type)) {
+    return res.status(400).json({ message: "type must be 'stats' or 'tournament'" });
+  }
+
+  const col = type === 'stats' ? 'auto_sync_stats' : 'auto_sync_tournament';
+  db.run(
+    `UPDATE tournaments SET ${col} = ? WHERE id = ? AND status = 'active'`,
+    [enabled ? 1 : 0, id],
+    function (err) {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      if (this.changes === 0) return res.status(404).json({ message: 'Active tournament not found' });
+      res.json({ success: true, [col]: enabled ? 1 : 0 });
+    }
+  );
+});
+
+// GET /api/admin/tournaments/:id/sync-logs — last sync log per type
+router.get('/tournaments/:id/sync-logs', authMiddleware, requireAdmin, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  db.all(
+    `SELECT type, status, message, ran_at FROM sync_logs
+     WHERE tournament_id = ?
+     ORDER BY ran_at DESC
+     LIMIT 20`,
+    [id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: 'Database error' });
+      res.json(rows || []);
+    }
+  );
 });
 
 // DELETE /api/admin/tournaments/:id — delete tournament and all related data

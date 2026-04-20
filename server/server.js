@@ -7,6 +7,9 @@ const path = require('path');
 // Ensure DB is initialized
 require('./database');
 
+const { startAutoSync } = require('./services/autoSync');
+startAutoSync();
+
 const authRoutes = require('./routes/auth');
 const leagueRoutes = require('./routes/leagues');
 const playerRoutes = require('./routes/players');
