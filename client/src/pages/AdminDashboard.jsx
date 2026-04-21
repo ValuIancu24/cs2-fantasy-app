@@ -709,30 +709,30 @@ function AdminDashboard() {
       </section>
 
       {/* ── Manage Tournaments ── */}
-      <section className="panel">
+      <section className="panel" style={{ gridColumn: '1 / -1', padding: '1.5rem 2rem' }}>
         <h2>Manage Tournaments</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          Marchează turnee ca terminate (Historical) sau ascunde-le de useri (Off the record).
+          Marchează turnee ca terminate (Historical) sau ascunde-le temporar de useri în timp ce configurezi turneul activ (dezactivezi jucători, calculezi prețuri etc.).
         </p>
         {tournamentStatusMsg && <p className="info-text" style={{ marginBottom: '0.5rem' }}>{tournamentStatusMsg}</p>}
-        <table style={{ width: '100%', fontSize: '0.85rem' }}>
+        <table style={{ width: '100%', fontSize: '0.9rem', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left' }}>Turneu</th>
-              <th>Status</th>
-              <th>Vizibil</th>
-              <th>Auto-Sync</th>
-              <th>Acțiuni</th>
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem 0.5rem 0' }}>Turneu</th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Vizibil</th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Auto-Sync</th>
+              <th style={{ padding: '0.5rem 0 0.5rem 0.75rem' }}>Acțiuni</th>
             </tr>
           </thead>
           <tbody>
             {allTournaments.map(t => (
               <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <td style={{ padding: '0.5rem 0' }}>
+                <td style={{ padding: '0.85rem 0.75rem 0.85rem 0' }}>
                   <span style={{ fontWeight: 600 }}>{t.name}</span>
                   <span className="muted" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>#{t.id}</span>
                 </td>
-                <td style={{ textAlign: 'center' }}>
+                <td style={{ textAlign: 'center', padding: '0.85rem 0.75rem' }}>
                   <span style={{
                     fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem',
                     borderRadius: 4,
@@ -743,10 +743,10 @@ function AdminDashboard() {
                     {t.status === 'active' ? 'Active' : 'Historical'}
                   </span>
                 </td>
-                <td style={{ textAlign: 'center' }}>
+                <td style={{ textAlign: 'center', padding: '0.85rem 0.75rem' }}>
                   <span style={{ fontSize: '0.85rem' }}>{t.is_visible === 0 ? '🔒 Hidden' : '👁 Visible'}</span>
                 </td>
-                <td style={{ textAlign: 'center', minWidth: '160px' }}>
+                <td style={{ textAlign: 'center', minWidth: '180px', padding: '0.85rem 0.75rem' }}>
                   {t.status === 'active' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
                       {/* Stats toggle */}
@@ -788,7 +788,7 @@ function AdminDashboard() {
                     <span className="muted" style={{ fontSize: '0.75rem' }}>—</span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right', paddingRight: '0.25rem' }}>
+                <td style={{ textAlign: 'right', padding: '0.85rem 0 0.85rem 0.75rem' }}>
                   <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                     {t.status === 'active' && (
                       <button
@@ -809,12 +809,15 @@ function AdminDashboard() {
                         Reactivate
                       </button>
                     )}
-                    <button
-                      className="btn-tiny btn-ghost"
-                      onClick={() => updateTournamentStatus(t.id, { is_visible: t.is_visible === 0 ? 1 : 0 })}
-                    >
-                      {t.is_visible === 0 ? 'Show' : 'Hide'}
-                    </button>
+                    {t.status === 'active' && (
+                      <button
+                        className="btn-tiny btn-ghost"
+                        onClick={() => updateTournamentStatus(t.id, { is_visible: t.is_visible === 0 ? 1 : 0 })}
+                        title={t.is_visible === 0 ? 'Make tournament visible to users' : 'Hide tournament from users while setting up'}
+                      >
+                        {t.is_visible === 0 ? 'Unhide' : 'Hide'}
+                      </button>
+                    )}
                     <button
                       className="btn-tiny btn-danger-sm"
                       onClick={async () => {

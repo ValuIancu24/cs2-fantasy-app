@@ -118,7 +118,9 @@ function MatchDetail() {
           {teams.map(team => (
             <div key={team.name} className={`match-stats-team ${team.won ? 'winner-team' : ''}`}>
               <div className={`match-stats-team-header ${team.won ? 'winner' : ''}`}>
-                {team.won ? '🏆 ' : ''}{team.name}
+                {team.image_url
+                  ? <img src={team.image_url} alt={team.name} style={{ height: 28, width: 28, objectFit: 'contain', verticalAlign: 'middle', filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.5))' }} />
+                  : team.name}
               </div>
               <table className="match-stats-table">
                 <thead>

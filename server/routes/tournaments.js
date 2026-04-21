@@ -39,7 +39,7 @@ router.get('/:tournamentId/info', (req, res) => {
   db.get(
     `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, start_date, end_date
      FROM tournaments
-     WHERE id = ? AND (is_visible IS NULL OR is_visible = 1)`,
+     WHERE id = ?`,
     [tournamentId],
     (err, row) => {
       if (err) return res.status(500).json({ message: 'Database error' });

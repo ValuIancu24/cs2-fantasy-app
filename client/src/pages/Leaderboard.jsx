@@ -97,7 +97,7 @@ function Leaderboard() {
             {fromMyTeam ? '← Back to My Team' : '← Back to Leagues'}
           </button>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 28, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 40, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
             {tournamentName ? `${tournamentName} — Leaderboard` : 'League Leaderboard'}
           </h2>
         </div>
@@ -109,6 +109,15 @@ function Leaderboard() {
             onChange={val => { setLeagueId(String(val)); setPage(1); setSearchParams({ league: String(val) }); }}
             placeholder="Select a league..."
           />
+          {data?.userRank != null && (
+            <button
+              className="btn-outlined small"
+              type="button"
+              onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${leagueId}`, { state: { from: 'my-team' } })}
+            >
+              View My Team
+            </button>
+          )}
         </div>
 
         {leagues.length === 0 && (

@@ -115,7 +115,7 @@ function MyTeam() {
             ← Back to Leagues
           </button>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 32, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 40, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
             {tournamentName ? `${tournamentName} — My Team` : 'My Team'}
           </h1>
         </div>
