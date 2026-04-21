@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/auth');
+const { getTournamentLockTime, isTournamentLocked } = require('../services/lockHelper');
 
 const router = express.Router();
 
@@ -76,7 +77,7 @@ function validateLineup(lineup) {
 }
 
 // CREATE FANTASY TEAM
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   const { leagueId, teamName, lineup, captainId } = req.body;
 
   if (!leagueId || !teamName || !Array.isArray(lineup)) {
@@ -96,6 +97,16 @@ router.post('/', authMiddleware, (req, res) => {
 
   if (!captainId || !lineup.map(String).includes(String(captainId))) {
     return res.status(400).json({ message: 'A captain must be selected from your lineup' });
+  }
+
+  if (req.user.role !== 'admin') {
+    const league = await new Promise(resolve => db.get('SELECT tournament_id FROM leagues WHERE id = ?', [leagueId], (_, r) => resolve(r)));
+    if (league) {
+      const lockTime = await getTournamentLockTime(league.tournament_id).catch(() => null);
+      if (isTournamentLocked(lockTime)) {
+        return res.status(403).json({ message: 'This tournament has already started. You can no longer save your team.' });
+      }
+    }
   }
 
   db.run(
@@ -165,9 +176,19 @@ router.put('/:id', authMiddleware, (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   const { teamName, lineup, captainId } = req.body;
 
-  db.get('SELECT * FROM fantasy_teams WHERE id = ? AND user_id = ?', [teamId, req.user.id], (err, team) => {
+  db.get('SELECT * FROM fantasy_teams WHERE id = ? AND user_id = ?', [teamId, req.user.id], async (err, team) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (!team) return res.status(404).json({ message: 'Team not found' });
+
+    if (req.user.role !== 'admin') {
+      const league = await new Promise(resolve => db.get('SELECT tournament_id FROM leagues WHERE id = ?', [team.league_id], (_, r) => resolve(r)));
+      if (league) {
+        const lockTime = await getTournamentLockTime(league.tournament_id).catch(() => null);
+        if (isTournamentLocked(lockTime)) {
+          return res.status(403).json({ message: 'This tournament has already started. You can no longer save your team.' });
+        }
+      }
+    }
 
     if (teamName !== undefined && !teamName.trim()) {
       return res.status(400).json({ message: 'Team name cannot be blank' });
@@ -374,7 +395,7 @@ router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
   const userId = req.user.id;
 
   db.all(
-    `SELECT ft.*, u.username, u.country_code
+    `SELECT ft.*, u.username, u.country_code, u.profile_picture
      FROM fantasy_teams ft
      JOIN users u ON u.id = ft.user_id
      WHERE ft.league_id = ?

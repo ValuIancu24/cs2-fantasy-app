@@ -145,8 +145,14 @@ function Leaderboard() {
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
                       </td>
                       <td>
-                        <FlagImg code={t.country_code} style={{ marginRight: 6 }} />
-                        {t.username}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {t.profile_picture
+                            ? <img src={t.profile_picture} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                            : <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#6d28d9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, flexShrink: 0 }}>{t.username?.[0]?.toUpperCase()}</span>
+                          }
+                          <FlagImg code={t.country_code} />
+                          {t.username}
+                        </span>
                       </td>
                       <td>{t.team_name}</td>
                       <td><strong>{t.total_points}</strong></td>

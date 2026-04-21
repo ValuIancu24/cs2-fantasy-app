@@ -7,7 +7,7 @@ function formatMatchDateTime(iso) {
   if (!iso) return { time: '—', date: '—', dateOnly: '—' };
   const d = new Date(iso);
   return {
-    time: d.toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }),
+    time: d.toLocaleTimeString('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }),
     date: d.toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     dateOnly: d.toLocaleDateString('en-GB', { timeZone: 'Europe/Bucharest', day: 'numeric', month: 'long', year: 'numeric' })
   };
@@ -137,7 +137,16 @@ function MatchDetail() {
                 <tbody>
                   {team.players.map(p => (
                     <tr key={p.player_id}>
-                      <td style={{ fontWeight: 600 }}>{p.nickname}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        <span
+                          style={{ cursor: 'pointer', color: '#c084fc' }}
+                          onClick={() => navigate(`/tournament/${tournamentId}/players/${p.player_id}`, {
+                            state: { from: 'match', backUrl: location.pathname }
+                          })}
+                        >
+                          {p.nickname}
+                        </span>
+                      </td>
                       <td style={{ color: '#60e6b8' }}>{p.kills}</td>
                       <td style={{ color: '#ff6b81' }}>{p.deaths}</td>
                       <td style={{ color: '#facc15' }}>{p.assists}</td>

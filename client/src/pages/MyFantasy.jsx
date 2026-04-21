@@ -99,7 +99,7 @@ function MyFantasy() {
                   <p className="muted tournament-card-meta">
                     ID: {t.id}
                     {t.last_synced && (
-                      <> · Synced {new Date(t.last_synced).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</>
+                      <> · Synced {new Date(t.last_synced.includes('T') ? t.last_synced : t.last_synced.replace(' ', 'T') + 'Z').toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' })}</>
                     )}
                   </p>
                 )}

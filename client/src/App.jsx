@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation, useMatch, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useMatch, Link, NavLink } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -50,21 +50,21 @@ function NavLinks({ user }) {
     <nav className="nav-links">
       {user && (
         <>
-          <Link to="/my-fantasy">My Fantasy</Link>
-          <Link to="/finished-tournaments">Ended Tournaments</Link>
+          <NavLink to="/my-fantasy" end>My Fantasy</NavLink>
+          <NavLink to="/finished-tournaments" end>Ended Tournaments</NavLink>
           {tournamentId && (
             <>
-              <Link to={`/tournament/${tournamentId}/leagues`}>Leagues</Link>
-              <Link to={`/tournament/${tournamentId}/matches`}>Matches</Link>
-              <Link to={`/tournament/${tournamentId}/players`}>Players</Link>
-              <Link to={`/tournament/${tournamentId}/my-team`}>My Team</Link>
-              <Link to={`/tournament/${tournamentId}/leaderboard`}>Leaderboard</Link>
+              <NavLink to={`/tournament/${tournamentId}/leagues`} end>Leagues</NavLink>
+              <NavLink to={`/tournament/${tournamentId}/matches`}>Matches</NavLink>
+              <NavLink to={`/tournament/${tournamentId}/players`}>Players</NavLink>
+              <NavLink to={`/tournament/${tournamentId}/my-team`} end>My Team</NavLink>
+              <NavLink to={`/tournament/${tournamentId}/leaderboard`} end>Leaderboard</NavLink>
             </>
           )}
           {teamBuilderMatch && navTournamentId && (
-            <Link to={`/tournament/${navTournamentId}/players`}>Players</Link>
+            <NavLink to={`/tournament/${navTournamentId}/players`}>Players</NavLink>
           )}
-          {user.role === 'admin' && <Link to="/admin">Admin</Link>}
+          {user.role === 'admin' && <NavLink to="/admin" end>Admin</NavLink>}
         </>
       )}
     </nav>

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/auth');
+const { getTournamentLockTime, isTournamentLocked } = require('../services/lockHelper');
 
 const router = express.Router();
 
@@ -30,6 +31,18 @@ router.get('/historical', authMiddleware, (req, res) => {
       res.json(rows || []);
     }
   );
+});
+
+// GET /api/tournaments/:tournamentId/lock-time
+router.get('/:tournamentId/lock-time', async (req, res) => {
+  const tournamentId = parseInt(req.params.tournamentId, 10);
+  if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
+  try {
+    const lockTime = await getTournamentLockTime(tournamentId);
+    res.json({ lock_time: lockTime, locked: isTournamentLocked(lockTime) });
+  } catch {
+    res.status(500).json({ message: 'Database error' });
+  }
 });
 
 // GET /api/tournaments/:id/info

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+
 import PlayerFlipCard from '../components/PlayerFlipCard.jsx';
 import '../styles/teambuilder.css';
 import '../styles/players.css';
@@ -13,7 +14,8 @@ function formatPrice(price) {
 
 function TeamBuilder() {
   const { leagueId } = useParams();
-  const { apiBase, setNavTournamentId } = useContext(AuthContext);
+  const { apiBase, setNavTournamentId, user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [teamName, setTeamName] = useState('');
@@ -24,7 +26,9 @@ function TeamBuilder() {
   const [success, setSuccess] = useState('');
   const [tournamentId, setTournamentId] = useState(null);
   const [warning, setWarning] = useState('');
+  const [lockError, setLockError] = useState('');
   const warningTimer = useRef(null);
+  const lockErrorTimer = useRef(null);
 
   const token = localStorage.getItem('cs2_fantasy_token');
 
@@ -35,6 +39,12 @@ function TeamBuilder() {
   useEffect(() => {
     return () => setNavTournamentId(null);
   }, [setNavTournamentId]);
+
+  useEffect(() => {
+    return () => {
+      if (lockErrorTimer.current) clearTimeout(lockErrorTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -49,6 +59,18 @@ function TeamBuilder() {
           return;
         }
         setTournamentId(league.tournament_id || null);
+
+        // Check lock — redirect non-admins if tournament has started
+        if (!isAdmin && league.tournament_id) {
+          const lockRes = await fetch(`${apiBase}/tournaments/${league.tournament_id}/lock-time`).catch(() => null);
+          if (lockRes?.ok) {
+            const lockData = await lockRes.json();
+            if (lockData.locked) {
+              navigate(`/tournament/${league.tournament_id}/leagues`, { replace: true });
+              return;
+            }
+          }
+        }
       }
 
       // Fetch players for this league's tournament
@@ -148,6 +170,21 @@ function TeamBuilder() {
     setError('');
     setSuccess('');
 
+    // Re-check lock at save time for non-admins
+    if (!isAdmin && tournamentId) {
+      const lockRes = await fetch(`${apiBase}/tournaments/${tournamentId}/lock-time`).catch(() => null);
+      if (lockRes?.ok) {
+        const lockData = await lockRes.json();
+        if (lockData.locked) {
+          setLockError('The tournament has already started. Your team cannot be saved. Redirecting...');
+          lockErrorTimer.current = setTimeout(() => {
+            navigate(`/tournament/${tournamentId}/leagues`, { replace: true });
+          }, 4500);
+          return;
+        }
+      }
+    }
+
     if (selected.length !== 5) {
       setError('You must select exactly 5 players');
       return;
@@ -216,13 +253,13 @@ function TeamBuilder() {
             type="text"
             value={teamName}
             onChange={e => setTeamName(e.target.value)}
-            placeholder="ex: Furienii"
+            placeholder="e.g. The Legends"
             maxLength={30}
             required
           />
         </label>
         <p className="muted" style={{ fontSize: '0.78rem', marginTop: '-0.25rem' }}>
-          Numele trebuie să fie unic în această ligă.
+          Team name must be unique within this league.
         </p>
 
         <div className="budget-row">
@@ -271,6 +308,7 @@ function TeamBuilder() {
           Selected: <strong>{selected.length} / 5</strong>
         </p>
 
+        {lockError && <div className="error-text">{lockError}</div>}
         {error && <div className="error-text">{error}</div>}
         {success && <div className="success-text">{success}</div>}
         <button className="btn-primary" onClick={saveTeam} disabled={selected.length !== 5 || !teamName.trim() || totalSpent > BUDGET_CAP || !captain}>

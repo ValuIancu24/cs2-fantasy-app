@@ -7,8 +7,8 @@ function formatMatchDate(iso) {
   if (!iso) return { time: '—', date: '—' };
   const d = new Date(iso);
   return {
-    time: d.toLocaleTimeString('ro-RO', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }),
-    date: d.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: 'short' })
+    time: d.toLocaleTimeString('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit' }),
+    date: d.toLocaleDateString('en-GB', { timeZone: 'Europe/Bucharest', day: '2-digit', month: 'short' })
   };
 }
 

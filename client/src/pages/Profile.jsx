@@ -69,6 +69,7 @@ function Profile() {
   const [currentPic, setCurrentPic] = useState(user?.profile_picture || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -100,7 +101,7 @@ function Profile() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ username, email, country_code: countryCode.toUpperCase() || null })
+      body: JSON.stringify({ email, country_code: countryCode.toUpperCase() || null })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -143,10 +144,29 @@ function Profile() {
     }
   };
 
+  const SYMBOL_RE = /[!@#$%^&*()\-_+=\[\]{}|;:'",.<>?/\\`~]/;
+  const newPasswordValid =
+    newPassword.length >= 6 &&
+    /[A-Z]/.test(newPassword) &&
+    /[0-9]/.test(newPassword) &&
+    SYMBOL_RE.test(newPassword);
+
   const changePassword = async e => {
     e.preventDefault();
     setMessage('');
     setError('');
+    if (!newPasswordValid) {
+      setError('New password does not meet the requirements.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError('New password must be different from the current password.');
+      return;
+    }
     const res = await fetch(`${apiBase}/auth/password`, {
       method: 'PUT',
       headers: {
@@ -162,6 +182,7 @@ function Profile() {
       setMessage('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
     }
   };
 
@@ -174,14 +195,7 @@ function Profile() {
         <form onSubmit={updateProfile} className="profile-form">
           <label>
             Username
-            <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              minLength={3}
-              maxLength={20}
-              required
-            />
+            <input type="text" value={username} disabled title="Username cannot be changed" style={{ opacity: 0.5, cursor: 'not-allowed' }} />
           </label>
           <label>
             Email
@@ -241,10 +255,38 @@ function Profile() {
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              minLength={6}
               required
             />
           </label>
+          {newPassword && (
+            <ul className="password-checklist">
+              {[
+                { label: 'At least 6 characters', ok: newPassword.length >= 6 },
+                { label: 'At least one uppercase letter', ok: /[A-Z]/.test(newPassword) },
+                { label: 'At least one number', ok: /[0-9]/.test(newPassword) },
+                { label: 'At least one symbol (!@#$%...)', ok: SYMBOL_RE.test(newPassword) },
+              ].map(r => (
+                <li key={r.label} className={r.ok ? 'check-ok' : 'check-fail'}>
+                  {r.ok ? '✓' : '✗'} {r.label}
+                </li>
+              ))}
+            </ul>
+          )}
+          <label>
+            Confirm New Password
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              required
+            />
+          </label>
+          {confirmPassword && newPassword !== confirmPassword && (
+            <p className="check-fail" style={{ fontSize: '0.82rem', marginTop: '-0.25rem' }}>✗ Passwords do not match</p>
+          )}
+          {confirmPassword && newPassword === confirmPassword && (
+            <p className="check-ok" style={{ fontSize: '0.82rem', marginTop: '-0.25rem' }}>✓ Passwords match</p>
+          )}
           <button type="submit" className="btn-outlined small">
             Change Password
           </button>
