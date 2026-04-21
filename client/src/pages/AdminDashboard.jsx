@@ -2,10 +2,12 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/admin.css';
 
+// SQLite CURRENT_TIMESTAMP has no 'Z', so we must force UTC parsing
+const parseUTC = ts => new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
+
 function formatScheduledTime(isoString) {
   if (!isoString) return 'TBD';
-  const date = new Date(isoString);
-  return date.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' });
+  return parseUTC(isoString).toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' });
 }
 
 function AdminDashboard() {
@@ -51,10 +53,6 @@ function AdminDashboard() {
   // Auto-sync
   const [syncLogs, setSyncLogs] = useState({});
   const [autoSyncToggles, setAutoSyncToggles] = useState({});
-
-  // Wipe
-  const [wiping, setWiping] = useState(false);
-  const [wipeMessage, setWipeMessage] = useState('');
 
   const token = localStorage.getItem('cs2_fantasy_token');
   const objectUrlRef = useRef(null);
@@ -155,7 +153,7 @@ function AdminDashboard() {
 
   const fetchTournamentMatches = async () => {
     if (!tournamentId.trim()) {
-      setTournamentMessage('Introdu un Tournament ID valid');
+      setTournamentMessage('Please enter a valid Tournament ID');
       return;
     }
     setTournamentFetching(true);
@@ -167,12 +165,12 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setTournamentMessage(data.message || 'Eroare la preluarea meciurilor');
+        setTournamentMessage(data.message || 'Failed to fetch matches');
       } else {
         setTournamentMatches(data);
       }
     } catch {
-      setTournamentMessage('Eroare de rețea');
+      setTournamentMessage('Network error');
     } finally {
       setTournamentFetching(false);
     }
@@ -189,15 +187,15 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setTournamentMessage(data.message || 'Sync eșuat');
+        setTournamentMessage(data.message || 'Sync failed');
       } else {
         setTournamentMessage(
-          `✅ Sync complet: ${data.teams} echipe, ${data.players} jucători, ${data.matches} meciuri`
+          `✅ Sync complete: ${data.teams} teams, ${data.players} players, ${data.matches} matches`
         );
         fetchStats();
       }
     } catch {
-      setTournamentMessage('Eroare de rețea');
+      setTournamentMessage('Network error');
     } finally {
       setTournamentSyncing(false);
     }
@@ -219,7 +217,7 @@ function AdminDashboard() {
         setTournamentMessage(`✅ Prices calculated for ${data.calculated} players`);
       }
     } catch {
-      setTournamentMessage('Eroare de rețea');
+      setTournamentMessage('Network error');
     } finally {
       setPricesCalculating(false);
     }
@@ -236,15 +234,15 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setTournamentMessage(data.message || 'Stats sync eșuat');
+        setTournamentMessage(data.message || 'Stats sync failed');
       } else {
         setTournamentMessage(
-          `✅ Stats sync: ${data.seriesSynced} serii sincronizate, ${data.seriesSkipped} neterminate, ${data.seriesFailed} erori (total: ${data.totalSeries})`
+          `✅ Stats synced: ${data.seriesSynced} series synced, ${data.seriesSkipped} unfinished, ${data.seriesFailed} errors (total: ${data.totalSeries})`
         );
         fetchStats();
       }
     } catch {
-      setTournamentMessage('Eroare de rețea');
+      setTournamentMessage('Network error');
     } finally {
       setStatsSyncing(false);
     }
@@ -273,7 +271,7 @@ function AdminDashboard() {
         setBannerMessage(data.message || 'Failed to save banner');
       }
     } catch {
-      setBannerMessage('Eroare de rețea');
+      setBannerMessage('Network error');
     } finally {
       setBannerSaving(false);
     }
@@ -300,35 +298,9 @@ function AdminDashboard() {
         setBreakdownData(data);
       }
     } catch {
-      setBreakdownMessage('Eroare de rețea');
+      setBreakdownMessage('Network error');
     } finally {
       setBreakdownLoading(false);
-    }
-  };
-
-  // ── Wipe ──────────────────────────────────────────────────────────────────
-
-  const wipeTournamentData = async () => {
-    if (!window.confirm('Ești sigur? Aceasta va șterge TOATE datele de turneu (jucători, echipe, statistici, lineup-uri).')) return;
-    setWiping(true);
-    setWipeMessage('');
-    try {
-      const res = await fetch(`${apiBase}/admin/wipe-tournament-data`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setWipeMessage(data.message || 'Wipe eșuat');
-      } else {
-        setWipeMessage('✅ ' + data.message);
-        setPlayerTeams([]);
-        fetchStats();
-      }
-    } catch {
-      setWipeMessage('Eroare de rețea');
-    } finally {
-      setWiping(false);
     }
   };
 
@@ -336,7 +308,7 @@ function AdminDashboard() {
 
   const loadPlayers = async () => {
     if (!manageTournamentId.trim()) {
-      setPlayersMessage('Introdu un Tournament ID');
+      setPlayersMessage('Please enter a Tournament ID');
       return;
     }
     setPlayersLoading(true);
@@ -350,14 +322,14 @@ function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setPlayersMessage(data.message || 'Eroare');
+        setPlayersMessage(data.message || 'Error');
       } else if (data.length === 0) {
-        setPlayersMessage('Nu s-au găsit jucători pentru acest turneu.');
+        setPlayersMessage('No players found for this tournament.');
       } else {
         setPlayerTeams(data);
       }
     } catch {
-      setPlayersMessage('Eroare de rețea');
+      setPlayersMessage('Network error');
     } finally {
       setPlayersLoading(false);
     }
@@ -448,7 +420,7 @@ function AdminDashboard() {
           <div className="scenario-row">
             <input
               type="number"
-              placeholder="ex: 828925"
+              placeholder="e.g. 828925"
               value={tournamentId}
               onChange={e => setTournamentId(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && fetchTournamentMatches()}
@@ -460,7 +432,7 @@ function AdminDashboard() {
               onClick={fetchTournamentMatches}
               disabled={tournamentFetching}
             >
-              {tournamentFetching ? 'Se încarcă...' : 'Previzualizează'}
+              {tournamentFetching ? 'Loading...' : 'Preview'}
             </button>
             {tournamentMatches && (
               <button
@@ -469,7 +441,7 @@ function AdminDashboard() {
                 onClick={syncTournament}
                 disabled={tournamentSyncing}
               >
-                {tournamentSyncing ? 'Se sincronizează...' : 'Sync Turneu'}
+                {tournamentSyncing ? 'Syncing...' : 'Sync Tournament'}
               </button>
             )}
             {tournamentId && (
@@ -478,7 +450,7 @@ function AdminDashboard() {
                 className="btn-outlined small"
                 onClick={syncStats}
                 disabled={statsSyncing}
-                title="Sincronizează statisticile meciurilor terminate și recalculează punctele fantasy"
+                title="Sync statistics for finished matches and recalculate fantasy points"
               >
                 {statsSyncing ? 'Sync stats...' : 'Sync Stats'}
               </button>
@@ -489,7 +461,7 @@ function AdminDashboard() {
                 className="btn-outlined small"
                 onClick={calculatePrices}
                 disabled={pricesCalculating}
-                title="Recalculează prețurile jucătorilor din turneul activ pe baza istoricului"
+                title="Recalculate player prices for the active tournament based on history"
               >
                 {pricesCalculating ? 'Calculating...' : 'Calculate Prices'}
               </button>
@@ -505,16 +477,16 @@ function AdminDashboard() {
               {tournamentMatches.matches[0]?.tournament?.name && (
                 <strong>{tournamentMatches.matches[0].tournament.name}</strong>
               )}{' '}
-              — {tournamentMatches.totalCount} meciuri găsite
+              — {tournamentMatches.totalCount} matches found
             </p>
             <div className="tournament-matches-table">
               <table>
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Meci</th>
+                    <th>Match</th>
                     <th>Format</th>
-                    <th>Programat (RO)</th>
+                    <th>Scheduled (UTC+3)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -628,7 +600,7 @@ function AdminDashboard() {
             onClick={loadPlayers}
             disabled={playersLoading}
           >
-            {playersLoading ? 'Se încarcă...' : 'Încarcă Jucători'}
+            {playersLoading ? 'Loading...' : 'Load Players'}
           </button>
         </div>
 
@@ -642,7 +614,7 @@ function AdminDashboard() {
                 <div className="player-manage-main">
                   <span
                     className={`player-active-badge ${player.is_active ? 'active' : 'inactive'}`}
-                    title={player.is_active ? 'Activ' : 'Inactiv'}
+                    title={player.is_active ? 'Active' : 'Inactive'}
                   >
                     {player.is_active ? '●' : '○'}
                   </span>
@@ -652,21 +624,21 @@ function AdminDashboard() {
                     className="btn-tiny"
                     onClick={() => toggleActive(player.id, player.is_active)}
                   >
-                    {player.is_active ? 'Dezactivează' : 'Activează'}
+                    {player.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button
                     type="button"
                     className="btn-tiny btn-ghost"
                     onClick={() => expandPlayer(player.id)}
                   >
-                    {expandedPlayer === player.id ? 'Ascunde' : 'Alias-uri'}
+                    {expandedPlayer === player.id ? 'Hide' : 'Aliases'}
                   </button>
                 </div>
 
                 {expandedPlayer === player.id && (
                   <div className="player-aliases-box">
                     {(playerAliases[player.id] || []).length === 0 ? (
-                      <span className="muted" style={{ fontSize: '0.8rem' }}>Niciun alias</span>
+                      <span className="muted" style={{ fontSize: '0.8rem' }}>No aliases</span>
                     ) : (
                       <div className="alias-list">
                         {(playerAliases[player.id] || []).map(a => (
@@ -676,7 +648,7 @@ function AdminDashboard() {
                               type="button"
                               className="alias-delete"
                               onClick={() => deleteAlias(player.id, a.id)}
-                              title="Șterge alias"
+                              title="Delete alias"
                             >
                               ×
                             </button>
@@ -687,7 +659,7 @@ function AdminDashboard() {
                     <div className="alias-add-row">
                       <input
                         type="text"
-                        placeholder="Adaugă alias..."
+                        placeholder="Add alias..."
                         value={newAlias[player.id] || ''}
                         onChange={e => setNewAlias(prev => ({ ...prev, [player.id]: e.target.value }))}
                         onKeyDown={e => e.key === 'Enter' && addAlias(player.id)}
@@ -697,7 +669,7 @@ function AdminDashboard() {
                         className="btn-tiny"
                         onClick={() => addAlias(player.id)}
                       >
-                        Adaugă
+                        Add
                       </button>
                     </div>
                   </div>
@@ -712,17 +684,18 @@ function AdminDashboard() {
       <section className="panel" style={{ gridColumn: '1 / -1', padding: '1.5rem 2rem' }}>
         <h2>Manage Tournaments</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          Marchează turnee ca terminate (Historical) sau ascunde-le temporar de useri în timp ce configurezi turneul activ (dezactivezi jucători, calculezi prețuri etc.).
+          Mark tournaments as finished (Historical) or temporarily hide them from users while setting up the active tournament (deactivating players, calculating prices, etc.).
         </p>
         {tournamentStatusMsg && <p className="info-text" style={{ marginBottom: '0.5rem' }}>{tournamentStatusMsg}</p>}
         <table style={{ width: '100%', fontSize: '0.9rem', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem 0.5rem 0' }}>Turneu</th>
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem 0.5rem 0' }}>Tournament</th>
               <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
-              <th style={{ padding: '0.5rem 0.75rem' }}>Vizibil</th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Visible</th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Lock Time</th>
               <th style={{ padding: '0.5rem 0.75rem' }}>Auto-Sync</th>
-              <th style={{ padding: '0.5rem 0 0.5rem 0.75rem' }}>Acțiuni</th>
+              <th style={{ padding: '0.5rem 0 0.5rem 0.75rem' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -746,6 +719,17 @@ function AdminDashboard() {
                 <td style={{ textAlign: 'center', padding: '0.85rem 0.75rem' }}>
                   <span style={{ fontSize: '0.85rem' }}>{t.is_visible === 0 ? '🔒 Hidden' : '👁 Visible'}</span>
                 </td>
+                <td style={{ textAlign: 'center', padding: '0.85rem 0.75rem' }}>
+                  {t.status === 'active' ? (
+                    t.lock_time
+                      ? <span style={{ fontSize: '0.75rem', color: '#c084fc' }}>
+                          {parseUTC(t.lock_time).toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      : <span className="muted" style={{ fontSize: '0.75rem' }}>Not synced</span>
+                  ) : (
+                    <span className="muted" style={{ fontSize: '0.75rem' }}>—</span>
+                  )}
+                </td>
                 <td style={{ textAlign: 'center', minWidth: '180px', padding: '0.85rem 0.75rem' }}>
                   {t.status === 'active' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
@@ -759,7 +743,7 @@ function AdminDashboard() {
                         </button>
                         {syncLogs[t.id]?.stats && (
                           <span style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'center' }}>
-                            {syncLogs[t.id].stats.status === 'success' ? '✓' : '✗'} {new Date(syncLogs[t.id].stats.ran_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {syncLogs[t.id].stats.status === 'success' ? '✓' : '✗'} {parseUTC(syncLogs[t.id].stats.ran_at).toLocaleTimeString('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             {syncLogs[t.id].stats.status === 'error' && (
                               <span style={{ color: '#ff6b81', marginLeft: '0.25rem' }}>{syncLogs[t.id].stats.message}</span>
                             )}
@@ -772,11 +756,11 @@ function AdminDashboard() {
                           className={`btn-tiny${t.auto_sync_tournament ? ' btn-active-sync' : ' btn-ghost'}`}
                           onClick={() => toggleAutoSync(t.id, 'tournament', t.auto_sync_tournament)}
                         >
-                          {t.auto_sync_tournament ? '⏸ Turneu ON' : '▶ Turneu OFF'}
+                          {t.auto_sync_tournament ? '⏸ Tournament ON' : '▶ Tournament OFF'}
                         </button>
                         {syncLogs[t.id]?.tournament && (
                           <span style={{ fontSize: '0.65rem', opacity: 0.7, textAlign: 'center' }}>
-                            {syncLogs[t.id].tournament.status === 'success' ? '✓' : '✗'} {new Date(syncLogs[t.id].tournament.ran_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {syncLogs[t.id].tournament.status === 'success' ? '✓' : '✗'} {parseUTC(syncLogs[t.id].tournament.ran_at).toLocaleTimeString('en-GB', { timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             {syncLogs[t.id].tournament.status === 'error' && (
                               <span style={{ color: '#ff6b81', marginLeft: '0.25rem' }}>{syncLogs[t.id].tournament.message}</span>
                             )}
@@ -794,7 +778,7 @@ function AdminDashboard() {
                       <button
                         className="btn-tiny"
                         onClick={() => {
-                          if (window.confirm(`Marchezi "${t.name}" ca terminat? Va apărea în Finished Tournaments.`))
+                          if (window.confirm(`Mark "${t.name}" as finished? It will appear in Finished Tournaments.`))
                             updateTournamentStatus(t.id, { status: 'historical' });
                         }}
                       >
@@ -821,7 +805,7 @@ function AdminDashboard() {
                     <button
                       className="btn-tiny btn-danger-sm"
                       onClick={async () => {
-                        if (!window.confirm(`Ștergi "${t.name}"? Se vor șterge toate statisticile, echipele și seriile asociate.`)) return;
+                        if (!window.confirm(`Delete "${t.name}"? All statistics, teams and associated series will be removed.`)) return;
                         const res = await fetch(`${apiBase}/admin/tournaments/${t.id}`, {
                           method: 'DELETE',
                           headers: { Authorization: `Bearer ${token}` }
@@ -843,7 +827,7 @@ function AdminDashboard() {
       <section className="panel price-breakdown-panel">
         <h2>Player Price Breakdown</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          Detalii despre cum a fost calculat prețul fiecărui jucător activ din turneu.
+          Details on how each active player's price was calculated for the tournament.
         </p>
         <div className="scenario-row" style={{ marginBottom: '0.75rem' }}>
           <input
@@ -855,7 +839,7 @@ function AdminDashboard() {
             style={{ width: '160px' }}
           />
           <button type="button" className="btn-outlined small" onClick={loadPriceBreakdown} disabled={breakdownLoading}>
-            {breakdownLoading ? 'Se încarcă...' : 'Load Breakdown'}
+            {breakdownLoading ? 'Loading...' : 'Load Breakdown'}
           </button>
         </div>
 
@@ -865,7 +849,7 @@ function AdminDashboard() {
           <>
             <div className="breakdown-roster-summary">
               <span className="muted" style={{ fontSize: '0.8rem' }}>
-                {breakdownData.players.length} jucători activi &nbsp;·&nbsp;
+                {breakdownData.players.length}{' '}active players &nbsp;·&nbsp;
                 Min score: <strong>{breakdownData.min_score?.toFixed(2) ?? '—'}</strong> &nbsp;·&nbsp;
                 Max score: <strong>{breakdownData.max_score?.toFixed(2) ?? '—'}</strong>
               </span>
@@ -894,7 +878,7 @@ function AdminDashboard() {
                       <div className="breakdown-detail">
                         {player.tournaments_used.length === 0 ? (
                           <p className="muted" style={{ fontSize: '0.82rem', margin: '0.25rem 0' }}>
-                            Niciun turneu anterior — preț implicit 190K.
+                            No previous tournaments — default price 190K.
                           </p>
                         ) : (
                           <>
@@ -910,9 +894,9 @@ function AdminDashboard() {
                                   <table className="breakdown-series-table">
                                     <thead>
                                       <tr>
-                                        <th>Meci</th>
+                                        <th>Match</th>
                                         <th>Format</th>
-                                        <th>Data</th>
+                                        <th>Date</th>
                                         <th>Pts</th>
                                       </tr>
                                     </thead>
@@ -927,7 +911,7 @@ function AdminDashboard() {
                                           <td className="muted">{s.format || '—'}</td>
                                           <td className="muted">
                                             {s.scheduled_at
-                                              ? new Date(s.scheduled_at).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
+                                              ? parseUTC(s.scheduled_at).toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' })
                                               : '—'}
                                           </td>
                                           <td className={s.pts >= 0 ? 'pts-pos' : 'pts-neg'}>
@@ -947,7 +931,7 @@ function AdminDashboard() {
                                   Weighted avg: {player.tournaments_used[0].avg.toFixed(2)} × 0.65 + {player.tournaments_used[1].avg.toFixed(2)} × 0.35 = <strong>{player.score.toFixed(2)}</strong>
                                 </span>
                               ) : (
-                                <span>Avg (1 turneu): <strong>{player.score.toFixed(2)}</strong></span>
+                                <span>Avg (1 tournament): <strong>{player.score.toFixed(2)}</strong></span>
                               )}
                               <span className="breakdown-formula-price">
                                 {range > 0 ? (
@@ -955,7 +939,7 @@ function AdminDashboard() {
                                     170K + ({player.score.toFixed(2)} − {breakdownData.min_score.toFixed(2)}) / ({breakdownData.max_score.toFixed(2)} − {breakdownData.min_score.toFixed(2)}) × 70K = <strong>{Math.round((player.price || 190000) / 1000)}K</strong>
                                   </>
                                 ) : (
-                                  <>Toți jucătorii au același scor → <strong>205K</strong></>
+                                  <>All players have the same score → <strong>205K</strong></>
                                 )}
                               </span>
                             </div>
@@ -971,22 +955,6 @@ function AdminDashboard() {
         )}
       </section>
 
-      {/* ── Danger Zone ── */}
-      <section className="panel danger-zone">
-        <h2>Danger Zone</h2>
-        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          Șterge toate datele de turneu (jucători, echipe, statistici, serii) și resetează lineup-urile fantasy la zero.
-        </p>
-        <button
-          type="button"
-          className="btn-danger"
-          onClick={wipeTournamentData}
-          disabled={wiping}
-        >
-          {wiping ? 'Se șterge...' : 'Wipe Tournament Data'}
-        </button>
-        {wipeMessage && <p className="info-text" style={{ marginTop: '0.5rem' }}>{wipeMessage}</p>}
-      </section>
     </div>
   );
 }

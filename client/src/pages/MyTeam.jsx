@@ -15,7 +15,7 @@ function TeamTag({ name, imageUrl }) {
 
 function formatDate(isoString) {
   if (!isoString) return null;
-  return new Date(isoString).toLocaleString('ro-RO', {
+  return new Date(isoString).toLocaleString('en-GB', {
     timeZone: 'Europe/Bucharest',
     day: '2-digit',
     month: 'short',
@@ -26,7 +26,8 @@ function formatDate(isoString) {
 
 function MyTeam() {
   const { tournamentId } = useParams();
-  const { apiBase } = useContext(AuthContext);
+  const { apiBase, user } = useContext(AuthContext);
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const token = localStorage.getItem('cs2_fantasy_token');
@@ -39,6 +40,7 @@ function MyTeam() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedPlayer, setExpandedPlayer] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     fetch(`${apiBase}/leagues`, { headers: { Authorization: `Bearer ${token}` } })
@@ -61,6 +63,10 @@ function MyTeam() {
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
       .then(r => r.ok ? r.json() : null)
       .then(t => { if (t?.name) setTournamentName(t.name); if (t?.banner_url) setTournamentBanner(t.banner_url); })
+      .catch(() => {});
+    fetch(`${apiBase}/tournaments/${tournamentId}/lock-time`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsLocked(d.locked); })
       .catch(() => {});
   }, [apiBase, tournamentId]);
 
@@ -89,6 +95,7 @@ function MyTeam() {
 
   const selectedLeague = leagues.find(l => String(l.id) === selectedLeagueId);
   const isFinished = selectedLeague?.tournament_status === 'historical';
+  const effectiveLocked = isLocked && !isAdmin;
 
   const allSeriesEntries = useMemo(() => {
     if (!breakdown) return [];
@@ -150,10 +157,15 @@ function MyTeam() {
       {error && (
         <div className="panel">
           <p className="muted">{error}</p>
-          {!isFinished && (
+          {!isFinished && !effectiveLocked && (
             <button className="btn-outlined small" onClick={() => navigate(`/team-builder/${selectedLeagueId}`)}>
               Build Team
             </button>
+          )}
+          {!isFinished && effectiveLocked && (
+            <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+              You didn't set up a team before the tournament started.
+            </p>
           )}
         </div>
       )}
@@ -350,7 +362,7 @@ function MyTeam() {
             </div>
           )}
 
-          {!isFinished && (
+          {!isFinished && !effectiveLocked && (
             <div style={{ marginTop: '1rem' }}>
               <button
                 className="btn-outlined small"
@@ -359,6 +371,11 @@ function MyTeam() {
                 Edit Team
               </button>
             </div>
+          )}
+          {!isFinished && effectiveLocked && (
+            <p className="muted" style={{ fontSize: '0.85rem', marginTop: '1rem' }}>
+              The tournament has started. Your team can no longer be edited.
+            </p>
           )}
         </>
       )}

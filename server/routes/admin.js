@@ -214,33 +214,14 @@ router.delete('/player-aliases/:aliasId', authMiddleware, requireAdmin, (req, re
   });
 });
 
-// ── WIPE ─────────────────────────────────────────────────────────────────────
-
-router.post('/wipe-tournament-data', authMiddleware, requireAdmin, (req, res) => {
-  db.serialize(() => {
-    db.run('DELETE FROM player_stats');
-    db.run('DELETE FROM player_aliases');
-    db.run('DELETE FROM series_cache');
-    db.run('DELETE FROM player_tournaments');
-    db.run('DELETE FROM players');
-    db.run('DELETE FROM teams');
-    db.run('DELETE FROM tournaments');
-    db.run(
-      `UPDATE fantasy_teams SET lineup = '[]', total_points = 0, rating_points = 0, team_points = 0`,
-      (err) => {
-        if (err) return res.status(500).json({ message: 'Wipe failed' });
-        res.json({ message: 'All tournament data wiped. Fantasy team lineups reset.' });
-      }
-    );
-  });
-});
-
 // ── TOURNAMENT STATUS ─────────────────────────────────────────────────────────
 
 // GET all tournaments (for admin management)
-router.get('/tournaments', authMiddleware, requireAdmin, (req, res) => {
+router.get('/tournaments', authMiddleware, requireAdmin, (_req, res) => {
   db.all(
-    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, auto_sync_stats, auto_sync_tournament FROM tournaments ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
+    `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, start_date, end_date, auto_sync_stats, auto_sync_tournament,
+            (SELECT MIN(scheduled_at) FROM series_cache WHERE tournament_id = tournaments.id) AS lock_time
+     FROM tournaments ORDER BY datetime(COALESCE(start_date, last_synced)) DESC`,
     [],
     (err, rows) => {
       if (err) return res.status(500).json({ message: 'Database error' });

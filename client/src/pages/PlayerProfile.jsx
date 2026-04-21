@@ -197,6 +197,8 @@ function PlayerProfile() {
   const handleBack = () => {
     if (location.state?.from === 'build-team') {
       navigate(`/team-builder/${location.state.leagueId}`);
+    } else if (location.state?.from === 'match') {
+      navigate(location.state.backUrl);
     } else {
       const restoredState = (location.state?.fromIntro && location.state?.leagueId)
         ? { fromIntro: true, leagueId: location.state.leagueId }
@@ -300,7 +302,9 @@ function PlayerProfile() {
 
   return (
     <div className="player-profile-page">
-      <button className="btn-text" type="button" onClick={handleBack}>← Back</button>
+      <button className="btn-text" type="button" onClick={handleBack}>
+        {location.state?.from === 'match' ? '← Back to Match' : '← Back'}
+      </button>
 
       {loading && <p className="muted" style={{ marginTop: '1rem' }}>Loading...</p>}
       {!loading && !player && <p className="muted" style={{ marginTop: '1rem' }}>Player not found.</p>}

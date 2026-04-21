@@ -145,7 +145,7 @@ router.get('/:seriesId', (req, res) => {
                 SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS kda_points,
                 MAX(ps.team_win) AS team_win
          FROM player_stats ps
-         JOIN players p ON p.id = ps.player_id
+         JOIN players p ON p.id = ps.player_id AND p.is_active = 1
          JOIN player_tournaments pt ON pt.player_id = ps.player_id AND pt.tournament_id = ps.tournament_id
          JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
          WHERE ps.series_id = ?

@@ -16,6 +16,7 @@ function TournamentLeagues() {
   const [tournamentName, setTournamentName] = useState('');
   const [tournamentBanner, setTournamentBanner] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Create form state
@@ -50,7 +51,7 @@ function TournamentLeagues() {
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setLeagues(data);
+          setLeagues(data.map(l => ({ ...l, is_member: !!l.is_member })));
           if (data.length > 0) setTournamentName('');
         }
       })
@@ -67,6 +68,12 @@ function TournamentLeagues() {
           setIsReadOnly(t.status === 'historical');
         }
       })
+      .catch(() => {});
+
+    // Fetch lock time
+    fetch(`${apiBase}/tournaments/${tournamentId}/lock-time`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsLocked(d.locked); })
       .catch(() => {});
   };
 
@@ -166,7 +173,7 @@ function TournamentLeagues() {
   };
 
   const handleDelete = async (leagueId, leagueName) => {
-    if (!window.confirm(`Ștergi liga "${leagueName}"? Toate echipele din ea vor fi șterse.`)) return;
+    if (!window.confirm(`Delete league "${leagueName}"? All teams in it will be removed.`)) return;
     const res = await fetch(`${apiBase}/leagues/${leagueId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
@@ -174,6 +181,8 @@ function TournamentLeagues() {
     if (res.ok) fetchLeagues();
     else { const d = await res.json(); alert(d.message || 'Failed to delete'); }
   };
+
+  const effectiveLocked = isLocked && !isAdmin;
 
   const searchLower = leagueSearch.toLowerCase();
   const publicLeagues = leagues.filter(l => l.is_public === 1 && l.name.toLowerCase().includes(searchLower));
@@ -198,6 +207,17 @@ function TournamentLeagues() {
           </p>
         </div>
       </div>
+
+      {isReadOnly && (
+        <p className="muted" style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
+          This tournament has ended.
+        </p>
+      )}
+      {!isReadOnly && effectiveLocked && (
+        <p className="muted" style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
+          This tournament has started. Joining and league creation are no longer available.
+        </p>
+      )}
 
       <div className="tl-layout" style={{ marginTop: '1.5rem' }}>
         {/* LEFT: League list */}
@@ -276,7 +296,7 @@ function TournamentLeagues() {
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
-                      ) : !isReadOnly ? (
+                      ) : !isReadOnly && !effectiveLocked ? (
                         <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
                       ) : null}
                     </div>
@@ -349,7 +369,7 @@ function TournamentLeagues() {
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
-                      ) : !isReadOnly ? (
+                      ) : !isReadOnly && !effectiveLocked ? (
                         <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
                       ) : null}
                     </div>
@@ -360,8 +380,9 @@ function TournamentLeagues() {
           )}
         </div>
 
-        {/* RIGHT: Create league form — hidden for finished tournaments */}
-        <div className="tl-create-section panel" style={isReadOnly ? { display: 'none' } : {}}>
+        {/* RIGHT: Create league form — hidden for finished tournaments or after lock */}
+        <div className="tl-create-section panel" style={isReadOnly || effectiveLocked ? { display: 'none' } : {}}>
+
           <h2>Create New League</h2>
           <form onSubmit={handleCreate} className="tl-create-form">
             <label>

@@ -54,7 +54,7 @@ function FinishedTournaments() {
         {!loading && tournaments.length === 0 && (
           <div className="myfantasy-empty">
             <p>No ended tournaments yet.</p>
-            <p className="muted">Tournaments will appear here once an admin marks them as finished.</p>
+            <p className="muted">Tournaments will appear here once they have finished.</p>
           </div>
         )}
 
@@ -87,7 +87,7 @@ function FinishedTournaments() {
                   <p className="muted tournament-card-meta">
                     ID: {t.id}
                     {t.last_synced && (
-                      <> · Synced {new Date(t.last_synced).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</>
+                      <> · Synced {new Date(t.last_synced.includes('T') ? t.last_synced : t.last_synced.replace(' ', 'T') + 'Z').toLocaleString('en-GB', { timeZone: 'Europe/Bucharest', dateStyle: 'short', timeStyle: 'short' })}</>
                     )}
                   </p>
                 )}

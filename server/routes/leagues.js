@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { authMiddleware } = require('../middleware/auth');
+const { getTournamentLockTime, isTournamentLocked } = require('../services/lockHelper');
 const router = express.Router();
 
 function generateInviteCode() {
@@ -21,7 +22,7 @@ function createEmptyFantasyTeam(userId, leagueId, username, callback) {
 }
 
 // CREATE LEAGUE
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
   const { name, tournamentId, isPublic } = req.body;
 
   if (!name || !name.trim()) {
@@ -32,6 +33,13 @@ router.post('/', authMiddleware, (req, res) => {
   }
   if (!tournamentId) {
     return res.status(400).json({ message: 'tournamentId is required' });
+  }
+
+  if (req.user.role !== 'admin') {
+    const lockTime = await getTournamentLockTime(tournamentId).catch(() => null);
+    if (isTournamentLocked(lockTime)) {
+      return res.status(403).json({ message: 'This tournament has already started. You can no longer create leagues.' });
+    }
   }
 
   const isPublicVal = isPublic === false ? 0 : 1;
@@ -121,14 +129,21 @@ router.get('/', authMiddleware, (req, res) => {
 });
 
 // JOIN LEAGUE
-router.post('/:id/join', authMiddleware, (req, res) => {
+router.post('/:id/join', authMiddleware, async (req, res) => {
   const leagueId = parseInt(req.params.id, 10);
   const { inviteCode } = req.body || {};
 
-  db.get('SELECT * FROM leagues WHERE id = ?', [leagueId], (err, league) => {
+  db.get('SELECT * FROM leagues WHERE id = ?', [leagueId], async (err, league) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (!league) return res.status(404).json({ message: 'League not found' });
     if (league.status !== 'active') return res.status(400).json({ message: 'League not active' });
+
+    if (req.user.role !== 'admin') {
+      const lockTime = await getTournamentLockTime(league.tournament_id).catch(() => null);
+      if (isTournamentLocked(lockTime)) {
+        return res.status(403).json({ message: 'This tournament has already started. You can no longer join leagues.' });
+      }
+    }
 
     const isPublic = !(league.is_public === 0 || league.is_public === false);
 
