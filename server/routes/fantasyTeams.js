@@ -230,7 +230,7 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
 
       // Fetch player info
       db.all(
-        `SELECT p.id, p.nickname, t.name AS team_name
+        `SELECT p.id, p.nickname, p.image_url AS player_image_url, t.name AS team_name, t.image_url AS team_image_url
          FROM players p
          LEFT JOIN player_tournaments pt ON pt.player_id = p.id AND pt.tournament_id = ?
          LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id
@@ -275,9 +275,13 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                  SUM(ps.deaths)  AS deaths,
                  SUM(ps.assists) AS assists,
                  SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS series_points,
-                 MAX(ps.team_win) AS team_win
+                 MAX(ps.team_win) AS team_win,
+                 t1img.image_url AS team1_image_url,
+                 t2img.image_url AS team2_image_url
                FROM player_stats ps
                LEFT JOIN series_cache sc ON sc.id = ps.series_id
+               LEFT JOIN teams t1img ON LOWER(t1img.name) = LOWER(sc.team1_name) AND t1img.tournament_id = ps.tournament_id
+               LEFT JOIN teams t2img ON LOWER(t2img.name) = LOWER(sc.team2_name) AND t2img.tournament_id = ps.tournament_id
                WHERE ps.player_id = ? AND ps.tournament_id = ?
                GROUP BY ps.series_id
                ORDER BY sc.scheduled_at ASC`,
@@ -307,8 +311,12 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                 // Fetch upcoming/ongoing series for this player's team (not yet finished, no TBD teams)
                 db.all(
                   `SELECT sc.id AS series_id, sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at,
-                          CASE WHEN datetime(sc.scheduled_at) > datetime('now') THEN 'upcoming' ELSE 'ongoing' END AS match_status
+                          CASE WHEN datetime(sc.scheduled_at) > datetime('now') THEN 'upcoming' ELSE 'ongoing' END AS match_status,
+                          t1img.image_url AS team1_image_url,
+                          t2img.image_url AS team2_image_url
                    FROM series_cache sc
+                   LEFT JOIN teams t1img ON LOWER(t1img.name) = LOWER(sc.team1_name) AND t1img.tournament_id = sc.tournament_id
+                   LEFT JOIN teams t2img ON LOWER(t2img.name) = LOWER(sc.team2_name) AND t2img.tournament_id = sc.tournament_id
                    WHERE sc.tournament_id = ?
                      AND (LOWER(sc.team1_name) = LOWER(?) OR LOWER(sc.team2_name) = LOWER(?))
                      AND sc.team1_name NOT LIKE '%TBD%'

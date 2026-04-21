@@ -13,9 +13,15 @@ function formatMatchDateTime(iso) {
   };
 }
 
-function TeamLogoLg({ name }) {
+function TeamLogoLg({ name, imageUrl }) {
   const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  return <div className="team-logo-lg">{initials}</div>;
+  return (
+    <div className="team-logo-lg">
+      {imageUrl
+        ? <img src={imageUrl} alt={name} />
+        : initials}
+    </div>
+  );
 }
 
 function MatchDetail() {
@@ -48,6 +54,8 @@ function MatchDetail() {
   const { time, date, dateOnly } = formatMatchDateTime(series.scheduled_at);
   const t1 = teams[0];
   const t2 = teams[1];
+  const t1ImageUrl = t1?.image_url || series.team1_image_url || null;
+  const t2ImageUrl = t2?.image_url || series.team2_image_url || null;
 
   return (
     <div className="match-detail-page">
@@ -74,7 +82,7 @@ function MatchDetail() {
 
         <div className="match-detail-overlay">
           <div className="match-detail-team">
-            <TeamLogoLg name={series.team1_name} />
+            <TeamLogoLg name={series.team1_name} imageUrl={t1ImageUrl} />
             <span className={`match-detail-team-name ${finished && t1?.won ? 'winner' : ''}`}>
               {series.team1_name || 'TBD'}
             </span>
@@ -97,7 +105,7 @@ function MatchDetail() {
           </div>
 
           <div className="match-detail-team right">
-            <TeamLogoLg name={series.team2_name} />
+            <TeamLogoLg name={series.team2_name} imageUrl={t2ImageUrl} />
             <span className={`match-detail-team-name ${finished && t2?.won ? 'winner' : ''}`}>
               {series.team2_name || 'TBD'}
             </span>

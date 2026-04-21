@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import PlayerFlipCard from '../components/PlayerFlipCard.jsx';
@@ -23,6 +23,8 @@ function TeamBuilder() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [tournamentId, setTournamentId] = useState(null);
+  const [warning, setWarning] = useState('');
+  const warningTimer = useRef(null);
 
   const token = localStorage.getItem('cs2_fantasy_token');
 
@@ -98,6 +100,22 @@ function TeamBuilder() {
     if (count >= 2) return false;
     if (totalSpent + (player.price || 190000) > BUDGET_CAP) return false;
     return true;
+  };
+
+  const getBlockReason = player => {
+    const id = String(player.id);
+    if (selected.includes(id)) return null;
+    if (selected.length >= 5) return 'Maximum players selected (5/5)';
+    const count = teamCounts[player.team_name] || 0;
+    if (count >= 2) return 'Maximum 2 players from the same team can be selected';
+    if (totalSpent + (player.price || 190000) > BUDGET_CAP) return 'Not enough budget to select this player';
+    return null;
+  };
+
+  const showWarning = msg => {
+    setWarning(msg);
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    warningTimer.current = setTimeout(() => setWarning(''), 2500);
   };
 
   const togglePlayer = player => {
@@ -183,6 +201,8 @@ function TeamBuilder() {
   const selectedPlayers = selected.map(id => players.find(p => String(p.id) === id)).filter(Boolean);
 
   return (
+    <>
+    {warning && <div className="tb-warning-toast">{warning}</div>}
     <div className="teambuilder">
       <div className="panel">
         <div className="tb-header-row">
@@ -230,7 +250,10 @@ function TeamBuilder() {
                     onClick={() => setCaptain(isCaptain ? null : String(p.id))}
                   >C</button>
                   <span>{p.nickname}</span>
-                  <span className="muted" style={{ fontSize: '0.75rem' }}>{p.team_name}</span>
+                  {p.team_image_url
+                    ? <img src={p.team_image_url} alt={p.team_name || ''} style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8))' }} />
+                    : <span className="muted" style={{ fontSize: '0.75rem' }}>{p.team_name}</span>
+                  }
                   <span className="tb-chip-price">{formatPrice(p.price)}</span>
                   <button className="btn-text small" onClick={() => togglePlayer(p)}>✕</button>
                 </div>
@@ -270,9 +293,15 @@ function TeamBuilder() {
           />
         )}
         <div className="player-groups">
-          {[...groupedPlayers.entries()].map(([teamName, teamPlayers]) => (
+          {[...groupedPlayers.entries()].map(([teamName, teamPlayers]) => {
+            const teamImageUrl = teamPlayers[0]?.team_image_url || null;
+            return (
             <div key={teamName} className="player-team-group">
-              <div className="player-team-label">{teamName}</div>
+              <div className="player-team-label">
+                {teamImageUrl
+                  ? <img src={teamImageUrl} alt={teamName} className="tb-team-logo" />
+                  : teamName}
+              </div>
               <div className="player-row">
                 {teamPlayers.map(p => {
                   const id = String(p.id);
@@ -285,13 +314,17 @@ function TeamBuilder() {
                       tournamentId={tournamentId}
                       isSelected={isSelected}
                       disabled={disabled}
+                      showPhoto
                       navigateState={{ from: 'build-team', leagueId }}
                     >
                       <button
-                        className={`btn-select${isSelected ? ' selected' : ''}`}
+                        className={`btn-select${isSelected ? ' selected' : ''}${disabled ? ' disabled' : ''}`}
                         type="button"
-                        onClick={() => togglePlayer(p)}
-                        disabled={disabled}
+                        onClick={() => {
+                          const reason = getBlockReason(p);
+                          if (reason) { showWarning(reason); return; }
+                          togglePlayer(p);
+                        }}
                       >
                         {isSelected ? 'Remove' : 'Select'}
                       </button>
@@ -300,10 +333,11 @@ function TeamBuilder() {
                 })}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       </div>
     </div>
+    </>
   );
 }
 

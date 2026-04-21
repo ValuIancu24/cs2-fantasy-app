@@ -134,8 +134,8 @@
 }
 
 .team-logo {
-  width: 28px;
-  height: 28px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: rgba(124, 58, 237, 0.25);
   border: 1px solid rgba(124, 58, 237, 0.3);
@@ -154,6 +154,7 @@
   height: 100%;
   border-radius: 50%;
   object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .match-team-name {
@@ -266,6 +267,7 @@
   height: 100%;
   border-radius: 50%;
   object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .match-detail-team-name {

@@ -148,6 +148,8 @@ function initDatabase() {
     db.run(`ALTER TABLE fantasy_teams ADD COLUMN captain_id TEXT`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN auto_sync_stats INTEGER DEFAULT 0`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN auto_sync_tournament INTEGER DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE players ADD COLUMN image_url TEXT`, () => {});
+    db.run(`ALTER TABLE teams ADD COLUMN image_url TEXT`, () => {});
 
     db.run(`CREATE TABLE IF NOT EXISTS sync_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

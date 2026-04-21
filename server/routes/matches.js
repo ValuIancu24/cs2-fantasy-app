@@ -20,10 +20,14 @@ router.get('/tournament/:tournamentId', (req, res) => {
 
     db.all(
       `SELECT sc.*,
-              (ps_agg.cnt > 0) AS has_stats
+              (ps_agg.cnt > 0) AS has_stats,
+              t1.image_url AS team1_image_url,
+              t2.image_url AS team2_image_url
        FROM series_cache sc
        LEFT JOIN (SELECT series_id, COUNT(*) AS cnt FROM player_stats GROUP BY series_id) ps_agg
          ON ps_agg.series_id = sc.id
+       LEFT JOIN teams t1 ON LOWER(t1.name) = LOWER(sc.team1_name) AND t1.tournament_id = sc.tournament_id
+       LEFT JOIN teams t2 ON LOWER(t2.name) = LOWER(sc.team2_name) AND t2.tournament_id = sc.tournament_id
        WHERE sc.tournament_id = ?
          AND (sc.team1_name IS NOT NULL AND sc.team1_name NOT LIKE '%TBD%')
          AND (sc.team2_name IS NOT NULL AND sc.team2_name NOT LIKE '%TBD%')
@@ -110,12 +114,28 @@ router.get('/:seriesId', (req, res) => {
       const finished = (countRow?.c || 0) > 0;
 
       if (!finished) {
-        return res.json({ series, finished: false, teams: [] });
+        db.all(
+          `SELECT name, image_url FROM teams
+           WHERE tournament_id = (SELECT tournament_id FROM series_cache WHERE id = ?)
+             AND (LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?))`,
+          [seriesId, series.team1_name || '', series.team2_name || ''],
+          (err, teamRows) => {
+            const imgMap = {};
+            (teamRows || []).forEach(t => { imgMap[t.name.toLowerCase()] = t.image_url; });
+            const enrichedSeries = {
+              ...series,
+              team1_image_url: imgMap[(series.team1_name || '').toLowerCase()] || null,
+              team2_image_url: imgMap[(series.team2_name || '').toLowerCase()] || null,
+            };
+            return res.json({ series: enrichedSeries, finished: false, teams: [] });
+          }
+        );
+        return;
       }
 
       // Get per-player stats aggregated across all games in series
       db.all(
-        `SELECT ps.player_id, p.nickname, t.name AS team_name,
+        `SELECT ps.player_id, p.nickname, t.name AS team_name, t.image_url AS team_image_url,
                 SUM(ps.kills) AS kills,
                 SUM(ps.deaths) AS deaths,
                 SUM(ps.assists) AS assists,
@@ -155,11 +175,13 @@ router.get('/:seriesId', (req, res) => {
 
               // Group players by team, sorted by total fantasy points desc
               const teamMap = {};
+              const teamImageMap = {};
               (players || []).forEach(p => {
                 const teamPts = p.team_win === 1 ? 15 : p.team_win === 0 ? -15 : 0;
                 const totalPts = p.kda_points + teamPts;
                 if (!teamMap[p.team_name]) teamMap[p.team_name] = [];
                 teamMap[p.team_name].push({ ...p, team_points: teamPts, total_points: totalPts });
+                if (p.team_image_url) teamImageMap[p.team_name] = p.team_image_url;
               });
 
               Object.values(teamMap).forEach(arr => arr.sort((a, b) => b.total_points - a.total_points));
@@ -168,6 +190,7 @@ router.get('/:seriesId', (req, res) => {
                 .filter(Boolean)
                 .map(name => ({
                   name,
+                  image_url: teamImageMap[name] || null,
                   score: winCount[name] || 0,
                   won: (winCount[name] || 0) > (winCount[name === series.team1_name ? series.team2_name : series.team1_name] || 0),
                   players: teamMap[name] || []

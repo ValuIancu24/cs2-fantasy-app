@@ -2,6 +2,16 @@
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 1rem;
+  align-items: start;
+}
+
+.teambuilder > .panel:first-child {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(210, 168, 255, 0.3) transparent;
 }
 
 .budget-row {
@@ -33,18 +43,26 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
   opacity: 0.5;
+  display: flex;
+  align-items: center;
+}
+
+.tb-team-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .player-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 2.5rem;
 }
 
 .player-row .flip-card-wrapper {
-  flex: 1 1 110px;
-  min-width: 110px;
-  max-width: 200px;
+  flex: 0 0 170px;
+  width: 170px;
 }
 
 .player-card {
@@ -178,6 +196,42 @@
   background: rgba(251, 191, 36, 0.15);
   border-color: #fbbf24;
   color: #fbbf24;
+}
+
+.tb-warning-toast {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(18, 8, 40, 0.97);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tb-warning-in 0.15s ease;
+}
+
+.tb-warning {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 0.75rem;
+  animation: tb-warning-in 0.15s ease;
+}
+
+@keyframes tb-warning-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 900px) {
