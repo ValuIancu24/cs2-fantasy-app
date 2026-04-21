@@ -12,9 +12,15 @@ function formatMatchDate(iso) {
   };
 }
 
-function TeamLogo({ name }) {
+function TeamLogo({ name, imageUrl }) {
   const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  return <div className="team-logo">{initials}</div>;
+  return (
+    <div className="team-logo">
+      {imageUrl
+        ? <img src={imageUrl} alt={name} />
+        : initials}
+    </div>
+  );
 }
 
 function MatchCard({ match, onClick, finished }) {
@@ -46,11 +52,11 @@ function MatchCard({ match, onClick, finished }) {
 
       <div className="match-card-teams">
         <div className="match-team-row">
-          <TeamLogo name={match.team1_name} />
+          <TeamLogo name={match.team1_name} imageUrl={match.team1_image_url} />
           <span className={`match-team-name ${t1Won ? 'winner' : ''}`}>{match.team1_name || 'TBD'}</span>
         </div>
         <div className="match-team-row">
-          <TeamLogo name={match.team2_name} />
+          <TeamLogo name={match.team2_name} imageUrl={match.team2_image_url} />
           <span className={`match-team-name ${t2Won ? 'winner' : ''}`}>{match.team2_name || 'TBD'}</span>
         </div>
       </div>

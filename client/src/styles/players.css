@@ -93,7 +93,8 @@
   background: rgba(165, 14, 21, 0.15);
 }
 
-.btn-select:disabled {
+.btn-select:disabled,
+.btn-select.disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
@@ -121,7 +122,7 @@
 .players-teams {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 2rem;
 }
 
 .players-team-section {
@@ -135,7 +136,7 @@
   width: 100%;
   background: rgba(94, 69, 155, 0.35);
   border: none;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -152,6 +153,19 @@
   background: rgba(94, 69, 155, 0.55);
 }
 
+.players-team-toggle-name {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.players-team-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .players-toggle-icon {
   font-size: 0.65rem;
   opacity: 0.6;
@@ -160,8 +174,8 @@
 .players-cards-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 4rem;
-  padding: 1rem 1.25rem;
+  gap: 3rem;
+  padding: 1.25rem;
   background: rgba(9, 0, 25, 0.4);
   border-top: 1px solid rgba(210, 168, 255, 0.1);
 }
@@ -169,6 +183,62 @@
 .players-cards-grid .flip-card-wrapper {
   width: 140px;
   flex: 0 0 140px;
+}
+
+/* ── Photo card variant ── */
+.flip-card.flip-card-photo {
+  height: 230px;
+}
+
+.flip-card-front-photo {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.flip-card-front-photo.selected {
+  border-color: #a50e15;
+  box-shadow: 0 0 0 1px rgba(107, 3, 12, 0.7);
+}
+
+.player-photo {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.player-photo-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: rgba(9, 0, 25, 0.88);
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.player-photo-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f0eaff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-photo-price {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #a78bfa;
+  flex-shrink: 0;
 }
 
 /* ── Player Profile page ── */
@@ -181,8 +251,36 @@
 .player-profile-header {
   margin-top: 1rem;
   display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.player-profile-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 0.75rem;
+  object-fit: cover;
+  object-position: top center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.player-profile-info {
+  display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
+}
+
+.player-profile-team-row {
+  display: flex;
+  align-items: center;
+}
+
+.player-profile-team-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .player-profile-name {

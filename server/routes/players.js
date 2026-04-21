@@ -3,7 +3,7 @@ const db = require('../database');
 
 const router = express.Router();
 
-const PLAYER_SELECT = `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, COALESCE(pt.price, p.price) AS price, t.name AS team_name
+const PLAYER_SELECT = `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, COALESCE(pt.price, p.price) AS price, t.name AS team_name, p.image_url AS player_image_url, t.image_url AS team_image_url
        FROM players p
        JOIN player_tournaments pt ON pt.player_id = p.id
        LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id`;
@@ -89,12 +89,16 @@ router.get('/:playerId/stats', (req, res) => {
        SUM(ps.kills) * 2 + SUM(ps.assists) - SUM(ps.deaths) AS kda_pts,
        MAX(ps.team_win) AS team_win,
        COUNT(DISTINCT ps.game_number) AS total_maps,
-       team_t.name AS player_team_name
+       team_t.name AS player_team_name,
+       t1img.image_url AS team1_image_url,
+       t2img.image_url AS team2_image_url
      FROM player_stats ps
      JOIN tournaments t ON t.id = ps.tournament_id
      LEFT JOIN series_cache sc ON sc.id = ps.series_id
      JOIN player_tournaments pt ON pt.player_id = ps.player_id AND pt.tournament_id = ps.tournament_id
      JOIN teams team_t ON team_t.id = pt.team_id AND team_t.tournament_id = pt.tournament_id
+     LEFT JOIN teams t1img ON LOWER(t1img.name) = LOWER(sc.team1_name) AND t1img.tournament_id = ps.tournament_id
+     LEFT JOIN teams t2img ON LOWER(t2img.name) = LOWER(sc.team2_name) AND t2img.tournament_id = ps.tournament_id
      WHERE ps.player_id = ?
        AND t.status = 'historical'
        AND t.id != ?
@@ -135,6 +139,8 @@ router.get('/:playerId/stats', (req, res) => {
           scheduled_at: row.scheduled_at,
           team1_name: row.team1_name,
           team2_name: row.team2_name,
+          team1_image_url: row.team1_image_url || null,
+          team2_image_url: row.team2_image_url || null,
           format: row.format,
           kills: row.kills || 0,
           deaths: row.deaths || 0,

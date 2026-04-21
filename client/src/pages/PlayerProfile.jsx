@@ -37,6 +37,19 @@ function ChartSelector({ selector, setSelector, options, singleTournament, singl
   );
 }
 
+function TeamLogoOrName({ name, imageUrl }) {
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name || ''}
+        style={{ width: 36, height: 36, objectFit: 'contain', display: 'block', flexShrink: 0, filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8))' }}
+      />
+    );
+  }
+  return <span style={{ fontWeight: 700 }}>{name || '?'}</span>;
+}
+
 function BarLabel({ x, y, width, height, value }) {
   if (value === undefined || value === null) return null;
   const labelY = value >= 0 ? y - 6 : y + height + 12;
@@ -209,7 +222,11 @@ function PlayerProfile() {
     const score = d.team1_score != null ? `${d.team1_score}–${d.team2_score}` : '?';
     return (
       <div className="chart-tooltip">
-        <div className="chart-tooltip-title">{d.team1_name} {score} {d.team2_name}</div>
+        <div className="chart-tooltip-title" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <TeamLogoOrName name={d.team1_name} imageUrl={d.team1_image_url} />
+          <span>{score}</span>
+          <TeamLogoOrName name={d.team2_name} imageUrl={d.team2_image_url} />
+        </div>
         <div>
           <span style={{ color: '#22c55e' }}>K</span>
           <span style={{ color: '#9ca3af' }}>/</span>
@@ -236,7 +253,11 @@ function PlayerProfile() {
     const kdaPts = d.kda_pts ?? 0;
     return (
       <div className="chart-tooltip">
-        <div className="chart-tooltip-title">{d.team1_name} {score} {d.team2_name}</div>
+        <div className="chart-tooltip-title" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <TeamLogoOrName name={d.team1_name} imageUrl={d.team1_image_url} />
+          <span>{score}</span>
+          <TeamLogoOrName name={d.team2_name} imageUrl={d.team2_image_url} />
+        </div>
         <div>
           <span style={{ color: '#22c55e' }}>K</span>
           <span style={{ color: '#9ca3af' }}>/</span>
@@ -286,9 +307,18 @@ function PlayerProfile() {
 
       {player && (
         <div className="player-profile-header panel">
-          <h1 className="player-profile-name">{player.nickname}</h1>
-          <span className="muted player-profile-team">{player.team_name || '—'}</span>
-          <span className="player-price player-profile-price">{fmtPrice(player.price)}</span>
+          {player.player_image_url && (
+            <img src={player.player_image_url} alt={player.nickname} className="player-profile-photo" />
+          )}
+          <div className="player-profile-info">
+            <h1 className="player-profile-name">{player.nickname}</h1>
+            <div className="player-profile-team-row">
+              {player.team_image_url
+                ? <img src={player.team_image_url} alt={player.team_name || ''} className="player-profile-team-logo" />
+                : <span className="muted player-profile-team">{player.team_name || '—'}</span>}
+            </div>
+            <span className="player-price player-profile-price">{fmtPrice(player.price)}</span>
+          </div>
         </div>
       )}
 

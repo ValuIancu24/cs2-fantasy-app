@@ -17,6 +17,7 @@ function Leaderboard() {
   const [leagueId, setLeagueId] = useState('');
   const [leagues, setLeagues] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
+  const [tournamentBanner, setTournamentBanner] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [userPage, setUserPage] = useState(null);
@@ -47,7 +48,7 @@ function Leaderboard() {
     if (!tournamentId) return;
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
       .then(r => r.ok ? r.json() : null)
-      .then(t => { if (t?.name) setTournamentName(t.name); })
+      .then(t => { if (t?.name) setTournamentName(t.name); if (t?.banner_url) setTournamentBanner(t.banner_url); })
       .catch(() => {});
   }, [apiBase, tournamentId]);
 
@@ -95,7 +96,10 @@ function Leaderboard() {
           }>
             {fromMyTeam ? '← Back to My Team' : '← Back to Leagues'}
           </button>
-          <h2>{tournamentName ? `${tournamentName} — Leaderboard` : 'League Leaderboard'}</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 28, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+            {tournamentName ? `${tournamentName} — Leaderboard` : 'League Leaderboard'}
+          </h2>
         </div>
 
         <div className="leaderboard-controls">
@@ -119,9 +123,7 @@ function Leaderboard() {
                   <th>Rank</th>
                   <th>Manager</th>
                   <th>Team</th>
-                  <th>Points</th>
-                  <th>Team Pts</th>
-                  <th>Total</th>
+                  <th>Total Fantasy Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -138,10 +140,6 @@ function Leaderboard() {
                         {t.username}
                       </td>
                       <td>{t.team_name}</td>
-                      <td>{t.rating_points}</td>
-                      <td className={t.team_points >= 0 ? 'pts-positive' : 'pts-negative'}>
-                        {t.team_points >= 0 ? '+' : ''}{t.team_points}
-                      </td>
                       <td><strong>{t.total_points}</strong></td>
                     </tr>
                   );

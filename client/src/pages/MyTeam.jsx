@@ -4,6 +4,15 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import '../styles/myteam.css';
 
+function TeamTag({ name, imageUrl }) {
+  return (
+    <span className="myteam-series-team">
+      {imageUrl && <img src={imageUrl} alt={name || ''} className="myteam-series-team-logo" />}
+      <span>{name || '?'}</span>
+    </span>
+  );
+}
+
 function formatDate(isoString) {
   if (!isoString) return null;
   return new Date(isoString).toLocaleString('ro-RO', {
@@ -24,6 +33,7 @@ function MyTeam() {
 
   const [leagues, setLeagues] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
+  const [tournamentBanner, setTournamentBanner] = useState('');
   const [selectedLeagueId, setSelectedLeagueId] = useState('');
   const [breakdown, setBreakdown] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -50,7 +60,7 @@ function MyTeam() {
     if (!tournamentId) return;
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
       .then(r => r.ok ? r.json() : null)
-      .then(t => { if (t?.name) setTournamentName(t.name); })
+      .then(t => { if (t?.name) setTournamentName(t.name); if (t?.banner_url) setTournamentBanner(t.banner_url); })
       .catch(() => {});
   }, [apiBase, tournamentId]);
 
@@ -104,7 +114,10 @@ function MyTeam() {
           <button className="btn-text" type="button" onClick={() => navigate(`/tournament/${tournamentId}/leagues`)}>
             ← Back to Leagues
           </button>
-          <h1>{tournamentName ? `${tournamentName} — My Team` : 'My Team'}</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 32, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+            {tournamentName ? `${tournamentName} — My Team` : 'My Team'}
+          </h1>
         </div>
         {leagues.length > 0 && (
           <div className="myteam-header-controls">
@@ -167,11 +180,16 @@ function MyTeam() {
                 tabIndex={0}
                 onKeyDown={e => e.key === 'Enter' && togglePlayer(player.id)}
               >
+                {player.player_image_url && (
+                  <img src={player.player_image_url} alt={player.nickname} className="myteam-player-photo" />
+                )}
                 <span className="myteam-player-name">
                   {player.nickname}
                   {player.is_captain && <span className="myteam-captain-badge">C</span>}
                 </span>
-                <span className="muted myteam-player-team">{player.team_name || '—'}</span>
+                {player.team_image_url
+                  ? <img src={player.team_image_url} alt={player.team_name || ''} className="myteam-player-team-logo" />
+                  : <span className="muted myteam-player-team">{player.team_name || '—'}</span>}
                 <span className="myteam-player-pts">{player.total_points} Total Points</span>
                 <span className="myteam-series-count muted">
                   {player.series.filter(s => !s.upcoming && !s.ongoing).length} {player.series.filter(s => !s.upcoming && !s.ongoing).length === 1 ? 'series' : 'series'}
@@ -190,7 +208,9 @@ function MyTeam() {
                     {player.nickname}
                     {player.is_captain && <span className="myteam-captain-badge">C</span>}
                   </strong>
-                  <span className="muted" style={{ fontSize: '0.8rem' }}>{player.team_name}</span>
+                  {player.team_image_url
+                    ? <img src={player.team_image_url} alt={player.team_name || ''} className="myteam-breakdown-team-logo" />
+                    : <span className="muted" style={{ fontSize: '0.8rem' }}>{player.team_name}</span>}
                 </div>
                 {player.series.length === 0 && (
                   <p className="muted" style={{ padding: '0.5rem 0', fontSize: '0.85rem' }}>
@@ -198,11 +218,19 @@ function MyTeam() {
                   </p>
                 )}
                 {player.series.map((s, i) => {
-                  const matchup = [s.team1_name, s.team2_name].filter(Boolean).join(' vs ') || `Series #${i + 1}`;
+                  const hasTeams = s.team1_name || s.team2_name;
                   return (
                     <div key={s.series_id} className={`myteam-series-row ${s.ongoing ? 'ongoing' : s.upcoming ? 'upcoming' : ''}`}>
                       <div className="myteam-series-info">
-                        <span className="myteam-series-matchup">{matchup}</span>
+                        <div className="myteam-series-matchup">
+                          {hasTeams ? (
+                            <>
+                              <TeamTag name={s.team1_name} imageUrl={s.team1_image_url} />
+                              <span className="myteam-series-vs">vs</span>
+                              <TeamTag name={s.team2_name} imageUrl={s.team2_image_url} />
+                            </>
+                          ) : `Series #${i + 1}`}
+                        </div>
                         <span className="muted myteam-series-meta">
                           {s.format || ''}
                           {s.scheduled_at ? ` · ${formatDate(s.scheduled_at)}` : ''}
@@ -277,6 +305,9 @@ function MyTeam() {
                       <div className="myteam-timeline-player">
                         {s.player.nickname}
                         {s.player.is_captain && <span className="myteam-captain-badge">C</span>}
+                        {s.player.team_image_url && (
+                          <img src={s.player.team_image_url} alt={s.player.team_name || ''} className="myteam-timeline-team-logo" />
+                        )}
                       </div>
                       <div className="myteam-timeline-matchup">{matchup}</div>
                       <div className="myteam-timeline-meta muted">

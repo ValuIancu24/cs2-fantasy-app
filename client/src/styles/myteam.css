@@ -164,6 +164,23 @@
   box-shadow: 0 0 0 1px rgba(210, 168, 255, 0.4);
 }
 
+.myteam-player-photo {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.myteam-player-team-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.65)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
+}
+
 .myteam-player-name {
   font-weight: 700;
   font-size: 0.95rem;
@@ -223,9 +240,39 @@
 .myteam-series-matchup {
   font-size: 0.85rem;
   font-weight: 500;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.myteam-series-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.myteam-series-team-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
+}
+
+.myteam-series-vs {
+  font-size: 0.72rem;
+  color: rgba(196, 181, 253, 0.5);
+  flex-shrink: 0;
+}
+
+.myteam-breakdown-team-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .myteam-series-meta {
@@ -325,6 +372,17 @@
   font-weight: 700;
   font-size: 0.88rem;
   color: #d2a8ff;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.myteam-timeline-team-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 0 1px rgba(0,0,0,0.8));
 }
 
 .myteam-timeline-matchup {

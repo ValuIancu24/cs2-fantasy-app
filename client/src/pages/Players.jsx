@@ -59,30 +59,39 @@ function Players() {
       )}
 
       <div className="players-teams">
-        {[...groupedByTeam.entries()].map(([team, teamPlayers]) => (
-          <div key={team} className="players-team-section">
-            <button
-              className="players-team-toggle"
-              type="button"
-              onClick={() => toggleTeam(team)}
-            >
-              <span>{team}</span>
-              <span className="players-toggle-icon">{expanded[team] ? '▲' : '▼'}</span>
-            </button>
-            {expanded[team] && (
-              <div className="players-cards-grid">
-                {teamPlayers.map(p => (
-                  <PlayerFlipCard
-                  key={p.id}
-                  player={p}
-                  tournamentId={tournamentId}
-                  navigateState={{ fromPlayers: true, fromIntro: !!fromIntro, leagueId: introLeagueId ?? null }}
-                />
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+        {[...groupedByTeam.entries()].map(([team, teamPlayers]) => {
+          const teamImageUrl = teamPlayers[0]?.team_image_url || null;
+          return (
+            <div key={team} className="players-team-section">
+              <button
+                className="players-team-toggle"
+                type="button"
+                onClick={() => toggleTeam(team)}
+              >
+                <span className="players-team-toggle-name">
+                  {teamImageUrl
+                    ? <img src={teamImageUrl} alt={team} className="players-team-logo" />
+                    : null}
+                  {team}
+                </span>
+                <span className="players-toggle-icon">{expanded[team] ? '▲' : '▼'}</span>
+              </button>
+              {expanded[team] && (
+                <div className="players-cards-grid">
+                  {teamPlayers.map(p => (
+                    <PlayerFlipCard
+                      key={p.id}
+                      player={p}
+                      tournamentId={tournamentId}
+                      showPhoto
+                      navigateState={{ fromPlayers: true, fromIntro: !!fromIntro, leagueId: introLeagueId ?? null }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
