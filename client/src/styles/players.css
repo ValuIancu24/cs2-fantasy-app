@@ -174,15 +174,15 @@
 .players-cards-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 3rem;
+  gap: 2rem;
   padding: 1.25rem;
   background: rgba(9, 0, 25, 0.4);
   border-top: 1px solid rgba(210, 168, 255, 0.1);
 }
 
 .players-cards-grid .flip-card-wrapper {
-  width: 140px;
-  flex: 0 0 140px;
+  width: 170px;
+  flex: 0 0 170px;
 }
 
 /* ── Photo card variant ── */
@@ -256,8 +256,8 @@
 }
 
 .player-profile-photo {
-  width: 96px;
-  height: 96px;
+  width: 130px;
+  height: 130px;
   border-radius: 0.75rem;
   object-fit: cover;
   object-position: top center;

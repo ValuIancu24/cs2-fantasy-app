@@ -84,7 +84,10 @@ router.get('/tournament/:tournamentId', (req, res) => {
                 const totalMaps = info.total_maps || 0;
                 const winnerScore = mapsNeeded;
                 const loserScore = Math.max(0, totalMaps - mapsNeeded);
-                const team1Won = info.winning_team === s.team1_name;
+                const wl = (info.winning_team || '').toLowerCase();
+                const t1l = (s.team1_name || '').toLowerCase();
+                const t2l = (s.team2_name || '').toLowerCase();
+                const team1Won = wl === t1l || wl.includes(t1l) || t1l.includes(wl);
                 return {
                   ...s,
                   team1_score: team1Won ? winnerScore : loserScore,
@@ -168,10 +171,6 @@ router.get('/:seriesId', (req, res) => {
               const totalMaps = scoreInfo?.total_maps || 0;
               const winnerScore = mapsNeeded;
               const loserScore = winningTeam ? Math.max(0, totalMaps - mapsNeeded) : 0;
-              const winCount = {
-                [series.team1_name]: winningTeam === series.team1_name ? winnerScore : loserScore,
-                [series.team2_name]: winningTeam === series.team2_name ? winnerScore : loserScore
-              };
 
               // Group players by team, sorted by total fantasy points desc
               const teamMap = {};
@@ -186,15 +185,38 @@ router.get('/:seriesId', (req, res) => {
 
               Object.values(teamMap).forEach(arr => arr.sort((a, b) => b.total_points - a.total_points));
 
+              // Resolve series name → actual teams table name (handles AURORA vs Aurora Gaming etc.)
+              const resolveTeamName = (seriesName) => {
+                if (!seriesName) return seriesName;
+                const lower = seriesName.toLowerCase();
+                const exact = Object.keys(teamMap).find(k => k.toLowerCase() === lower);
+                if (exact) return exact;
+                return Object.keys(teamMap).find(k =>
+                  k.toLowerCase().includes(lower) || lower.includes(k.toLowerCase())
+                ) || seriesName;
+              };
+
+              const t1Resolved = resolveTeamName(series.team1_name);
+              const t2Resolved = resolveTeamName(series.team2_name);
+
+              const winCount = {
+                [t1Resolved]: winningTeam === t1Resolved ? winnerScore : loserScore,
+                [t2Resolved]: winningTeam === t2Resolved ? winnerScore : loserScore
+              };
+
               const teams = [series.team1_name, series.team2_name]
                 .filter(Boolean)
-                .map(name => ({
-                  name,
-                  image_url: teamImageMap[name] || null,
-                  score: winCount[name] || 0,
-                  won: (winCount[name] || 0) > (winCount[name === series.team1_name ? series.team2_name : series.team1_name] || 0),
-                  players: teamMap[name] || []
-                }));
+                .map(name => {
+                  const resolved = resolveTeamName(name);
+                  const otherResolved = resolveTeamName(name === series.team1_name ? series.team2_name : series.team1_name);
+                  return {
+                    name,
+                    image_url: teamImageMap[resolved] || null,
+                    score: winCount[resolved] || 0,
+                    won: (winCount[resolved] || 0) > (winCount[otherResolved] || 0),
+                    players: teamMap[resolved] || []
+                  };
+                });
 
               res.json({ series, finished: true, teams });
             }

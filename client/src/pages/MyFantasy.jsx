@@ -36,12 +36,21 @@ function MyFantasy() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`${apiBase}/tournaments/active`)
+    const token = localStorage.getItem('cs2_fantasy_token');
+    const url = isAdmin
+      ? `${apiBase}/admin/tournaments`
+      : `${apiBase}/tournaments/active`;
+    const opts = isAdmin ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+    fetch(url, opts)
       .then(r => r.json())
-      .then(data => setTournaments(Array.isArray(data) ? data : []))
+      .then(data => {
+        const all = Array.isArray(data) ? data : [];
+        setTournaments(isAdmin ? all.filter(t => t.status === 'active') : all);
+      })
       .catch(() => setTournaments([]))
       .finally(() => setLoading(false));
-  }, [apiBase]);
+  }, [apiBase, isAdmin]);
 
   return (
     <div className="myfantasy-page">
@@ -55,7 +64,6 @@ function MyFantasy() {
         {!loading && tournaments.length === 0 && (
           <div className="myfantasy-empty">
             <p>No active tournaments.</p>
-            <p className="muted">An admin needs to sync a tournament from the Admin panel first.</p>
           </div>
         )}
 
@@ -72,6 +80,9 @@ function MyFantasy() {
               >
                 <div className="tournament-card-badge">CS2</div>
                 <div className="ft-active-ribbon">Active</div>
+                {isAdmin && t.is_visible === 0 && (
+                  <div className="ft-active-ribbon" style={{ top: '2.2rem', background: 'rgba(251,191,36,0.85)', color: '#1a1000' }}>Hidden</div>
+                )}
                 <div className="tournament-card-name-overlay">{t.name}</div>
               </div>
 

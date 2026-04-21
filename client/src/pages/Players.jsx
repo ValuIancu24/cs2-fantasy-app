@@ -13,6 +13,7 @@ function Players() {
   const introLeagueId = location.state?.leagueId;
   const [players, setPlayers] = useState([]);
   const [tournamentName, setTournamentName] = useState('');
+  const [tournamentBanner, setTournamentBanner] = useState('');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
 
@@ -24,6 +25,7 @@ function Players() {
       .then(([playersData, tournamentData]) => {
         setPlayers(Array.isArray(playersData) ? playersData : []);
         if (tournamentData?.name) setTournamentName(tournamentData.name);
+        if (tournamentData?.banner_url) setTournamentBanner(tournamentData.banner_url);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -51,7 +53,10 @@ function Players() {
             ← Back
           </button>
         )}
-        <h1>{tournamentName ? `${tournamentName} — Players` : 'Players'}</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          {tournamentBanner && <img src={tournamentBanner} alt="" style={{ height: 40, width: 'auto', objectFit: 'contain', borderRadius: '4px' }} />}
+          {tournamentName ? `${tournamentName} — Players` : 'Players'}
+        </h1>
       </div>
 
       {players.length === 0 && (

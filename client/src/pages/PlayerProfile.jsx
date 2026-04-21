@@ -391,12 +391,12 @@ function PlayerProfile() {
                 />
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={440}>
-              <RadarChart data={radarData} outerRadius="72%" margin={{ top: 8, right: 24, left: 24, bottom: 8 }}>
-                <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#c4b5fd', fontSize: 10 }} />
+            <ResponsiveContainer width="100%" height={520}>
+              <RadarChart data={radarData} outerRadius="75%" margin={{ top: 16, right: 48, left: 48, bottom: 16 }}>
+                <PolarGrid stroke="rgba(167,139,250,0.25)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#e9d5ff', fontSize: 13, fontWeight: 600 }} />
                 <PolarRadiusAxis tick={false} axisLine={false} tickLine={false} />
-                <Radar dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.25} isAnimationActive={false} />
+                <Radar dataKey="value" stroke="#c084fc" strokeWidth={2} fill="#a78bfa" fillOpacity={0.35} isAnimationActive={false} dot={{ r: 4, fill: '#c084fc', strokeWidth: 0 }} />
                 <Tooltip content={renderRadarTooltip} wrapperStyle={{ background: 'none', border: 'none', boxShadow: 'none', padding: 0 }} />
               </RadarChart>
             </ResponsiveContainer>
