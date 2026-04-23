@@ -47,6 +47,11 @@ function TeamBuilder() {
   }, []);
 
   useEffect(() => {
+    if (isAdmin) {
+      navigate('/my-fantasy', { replace: true });
+      return;
+    }
+
     const load = async () => {
       // Check if the tournament is finished — redirect to view-only
       const leagueInfoRes = await fetch(`${apiBase}/leagues/${leagueId}/info`, {
@@ -113,6 +118,14 @@ function TeamBuilder() {
   , [selected, players]);
 
   const budgetLeft = BUDGET_CAP - totalSpent;
+
+  // Sum of individually-rounded K values to avoid display inconsistency (e.g. 224K + 212K should show 436K, not 435K)
+  const totalSpentK = useMemo(() =>
+    selected.reduce((sum, id) => {
+      const p = players.find(pl => String(pl.id) === id);
+      return sum + Math.round((p?.price || 190000) / 1000);
+    }, 0)
+  , [selected, players]);
 
   const canSelect = player => {
     const id = String(player.id);
@@ -265,10 +278,10 @@ function TeamBuilder() {
         <div className="budget-row">
           <span>Budget:</span>
           <span className={totalSpent > BUDGET_CAP ? 'bad' : ''}>
-            {formatPrice(totalSpent)} / {formatPrice(BUDGET_CAP)}
+            {totalSpentK}K / {formatPrice(BUDGET_CAP)}
           </span>
           {budgetLeft >= 0
-            ? <span className="muted">({formatPrice(budgetLeft)} left)</span>
+            ? <span className="muted">({1000 - totalSpentK}K left)</span>
             : <span className="bad">Over budget!</span>
           }
         </div>

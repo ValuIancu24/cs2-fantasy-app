@@ -103,11 +103,12 @@ function TournamentLeagues() {
 
     setCreateName('');
     setIsPublic(true);
+    fetchLeagues();
     const msg = data.invite_code ? 'Private league created!' : 'League created!';
     setCreateToast(msg);
     setTimeout(() => {
       setCreateToast('');
-      setIntroModal({ leagueId: data.id });
+      if (!isAdmin) setIntroModal({ leagueId: data.id });
     }, 1000);
   };
 
@@ -256,7 +257,7 @@ function TournamentLeagues() {
                     <div className="tl-league-info">
                       {editingId === l.id ? (
                         <div className="tl-edit-row">
-                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} autoFocus />
+                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} maxLength={40} autoFocus />
                           <button className="btn-tiny" onClick={() => handleRename(l.id)}>Save</button>
                           <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
                         </div>
@@ -291,12 +292,12 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
                         </>
                       )}
-                      {l.is_member && (
+                      {(l.is_member || isAdmin) && (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
-                      ) : !isReadOnly && !effectiveLocked ? (
+                      ) : !isAdmin && !isReadOnly && !effectiveLocked ? (
                         <button className="btn-primary small" onClick={() => handleJoinPublic(l.id)} disabled={joining}>Join</button>
                       ) : null}
                     </div>
@@ -315,7 +316,7 @@ function TournamentLeagues() {
                     <div className="tl-league-info">
                       {editingId === l.id ? (
                         <div className="tl-edit-row">
-                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} autoFocus />
+                          <input value={editName} onChange={e => setEditName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(l.id)} maxLength={40} autoFocus />
                           <button className="btn-tiny" onClick={() => handleRename(l.id)}>Save</button>
                           <button className="btn-tiny btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
                         </div>
@@ -364,12 +365,12 @@ function TournamentLeagues() {
                           <button className="btn-tiny btn-danger-sm" onClick={() => handleDelete(l.id, l.name)}>Delete</button>
                         </>
                       )}
-                      {l.is_member && (
+                      {(l.is_member || isAdmin) && (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/leaderboard?league=${l.id}`)}>View Leaderboard</button>
                       )}
                       {l.is_member ? (
                         <button className="btn-outlined small" onClick={() => navigate(`/tournament/${tournamentId}/my-team?league=${l.id}`)}>View Team</button>
-                      ) : !isReadOnly && !effectiveLocked ? (
+                      ) : !isAdmin && !isReadOnly && !effectiveLocked ? (
                         <button className="btn-outlined small" onClick={() => { setJoinModal({ leagueId: l.id, leagueName: l.name }); setJoinCode(''); setJoinError(''); }}>Join with Code</button>
                       ) : null}
                     </div>

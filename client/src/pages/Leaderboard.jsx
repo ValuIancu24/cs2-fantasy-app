@@ -155,7 +155,7 @@ function Leaderboard() {
                         </span>
                       </td>
                       <td>{t.team_name}</td>
-                      <td><strong>{t.total_points}</strong></td>
+                      <td><strong style={{ color: '#d2a8ff' }}>{t.total_points}</strong></td>
                     </tr>
                   );
                 })}

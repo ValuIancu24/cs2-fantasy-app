@@ -186,7 +186,6 @@ function Profile() {
     }
   };
 
-  const countries = ALL_COUNTRIES;
 
   return (
     <div className="profile-grid">
