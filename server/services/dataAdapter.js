@@ -300,12 +300,11 @@ async function findPlayer(player, tournamentId) {
 // Insert player if not exists (preserving is_active), then upsert tournament association
 async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
   await dbRun(
-    `INSERT OR IGNORE INTO players (id, nickname, is_active, last_synced)
-     VALUES (?, ?, 1, CURRENT_TIMESTAMP)`,
+    `INSERT OR IGNORE INTO players (id, nickname, is_active) VALUES (?, ?, 1)`,
     [playerId, nickname]
   );
   await dbRun(
-    `UPDATE players SET nickname = ?, last_synced = CURRENT_TIMESTAMP WHERE id = ?`,
+    `UPDATE players SET nickname = ? WHERE id = ?`,
     [nickname, playerId]
   );
   await dbRun(

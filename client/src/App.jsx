@@ -6,7 +6,6 @@ import Register from './pages/Register.jsx';
 import MyFantasy from './pages/MyFantasy.jsx';
 import LeaguesRedirect from './pages/LeaguesRedirect.jsx';
 import TournamentLeagues from './pages/TournamentLeagues.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import TeamBuilder from './pages/TeamBuilder.jsx';
 import MyTeam from './pages/MyTeam.jsx';
 import Matches from './pages/Matches.jsx';
@@ -57,7 +56,7 @@ function NavLinks({ user }) {
               <NavLink to={`/tournament/${tournamentId}/leagues`} end>Leagues</NavLink>
               <NavLink to={`/tournament/${tournamentId}/matches`}>Matches</NavLink>
               <NavLink to={`/tournament/${tournamentId}/players`}>Players</NavLink>
-              <NavLink to={`/tournament/${tournamentId}/my-team`} end>My Team</NavLink>
+              {user.role !== 'admin' && <NavLink to={`/tournament/${tournamentId}/my-team`} end>My Team</NavLink>}
               <NavLink to={`/tournament/${tournamentId}/leaderboard`} end>Leaderboard</NavLink>
             </>
           )}
@@ -155,7 +154,6 @@ function App() {
             <Route path="/" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Home />} />
             <Route path="/login" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Login />} />
             <Route path="/register" element={loading ? null : user ? <Navigate to="/my-fantasy" replace /> : <Register />} />
-            <Route path="/dashboard" element={<Navigate to="/my-fantasy" replace />} />
             <Route path="/leagues" element={<ProtectedRoute><LeaguesRedirect /></ProtectedRoute>} />
             <Route path="/finished-tournaments" element={<ProtectedRoute><FinishedTournaments /></ProtectedRoute>} />
             <Route

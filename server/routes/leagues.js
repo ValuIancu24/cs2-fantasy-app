@@ -14,9 +14,9 @@ function generateInviteCode() {
 function createEmptyFantasyTeam(userId, leagueId, username, callback) {
   const teamName = `${username}'s Team`;
   db.run(
-    `INSERT OR IGNORE INTO fantasy_teams (user_id, league_id, team_name, lineup, budget_spent)
-     VALUES (?, ?, ?, ?, ?)`,
-    [userId, leagueId, teamName, '[]', 0],
+    `INSERT OR IGNORE INTO fantasy_teams (user_id, league_id, team_name, lineup)
+     VALUES (?, ?, ?, ?)`,
+    [userId, leagueId, teamName, '[]'],
     callback
   );
 }
@@ -57,13 +57,17 @@ router.post('/', authMiddleware, async (req, res) => {
 
   function insertLeague() {
   db.run(
-    `INSERT INTO leagues (name, creator_id, status, tournament_id, is_public, invite_code, join_code)
-     VALUES (?, ?, 'active', ?, ?, ?, ?)`,
-    [name.trim(), req.user.id, tournamentId, isPublicVal, inviteCode, inviteCode],
+    `INSERT INTO leagues (name, creator_id, status, tournament_id, is_public, invite_code)
+     VALUES (?, ?, 'active', ?, ?, ?)`,
+    [name.trim(), req.user.id, tournamentId, isPublicVal, inviteCode],
     function (err) {
       if (err) return res.status(500).json({ message: 'Failed to create league' });
 
       const leagueId = this.lastID;
+
+      if (req.user.role === 'admin') {
+        return res.status(201).json({ id: leagueId, name: name.trim(), invite_code: inviteCode });
+      }
 
       db.run('INSERT INTO league_members (league_id, user_id) VALUES (?, ?)', [leagueId, req.user.id], (err) => {
         if (err) return res.status(500).json({ message: 'Failed to add creator to league' });
@@ -130,6 +134,10 @@ router.get('/', authMiddleware, (req, res) => {
 
 // JOIN LEAGUE
 router.post('/:id/join', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.status(403).json({ message: 'Admins cannot join leagues as participants' });
+  }
+
   const leagueId = parseInt(req.params.id, 10);
   const { inviteCode } = req.body || {};
 
@@ -149,7 +157,7 @@ router.post('/:id/join', authMiddleware, async (req, res) => {
 
     if (!isPublic) {
       const provided = (inviteCode || '').toUpperCase();
-      const stored = (league.invite_code || league.join_code || '').toUpperCase();
+      const stored = (league.invite_code || '').toUpperCase();
       if (!provided || provided !== stored) {
         return res.status(400).json({ message: 'Invalid invite code' });
       }
@@ -212,6 +220,7 @@ router.patch('/:id/name', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.id, 10);
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ message: 'Name required' });
+  if (name.trim().length > 40) return res.status(400).json({ message: 'League name cannot exceed 40 characters' });
 
   db.get('SELECT tournament_id FROM leagues WHERE id = ?', [leagueId], (err, league) => {
     if (!league) return res.status(404).json({ message: 'League not found' });

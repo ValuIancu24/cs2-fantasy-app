@@ -78,6 +78,10 @@ function validateLineup(lineup) {
 
 // CREATE FANTASY TEAM
 router.post('/', authMiddleware, async (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.status(403).json({ message: 'Admins cannot create fantasy teams' });
+  }
+
   const { leagueId, teamName, lineup, captainId } = req.body;
 
   if (!leagueId || !teamName || !Array.isArray(lineup)) {
@@ -110,9 +114,9 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   db.run(
-    `INSERT INTO fantasy_teams (user_id, league_id, team_name, lineup, budget_spent, captain_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [req.user.id, leagueId, teamName.trim(), JSON.stringify(lineup.map(String)), 0, String(captainId)],
+    `INSERT INTO fantasy_teams (user_id, league_id, team_name, lineup, captain_id)
+     VALUES (?, ?, ?, ?, ?)`,
+    [req.user.id, leagueId, teamName.trim(), JSON.stringify(lineup.map(String)), String(captainId)],
     function (err) {
       if (err) {
         if (err.code === 'SQLITE_CONSTRAINT') {
@@ -173,6 +177,10 @@ router.get('/:leagueId', authMiddleware, (req, res) => {
 
 // UPDATE FANTASY TEAM
 router.put('/:id', authMiddleware, (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.status(403).json({ message: 'Admins cannot edit fantasy teams' });
+  }
+
   const teamId = parseInt(req.params.id, 10);
   const { teamName, lineup, captainId } = req.body;
 
@@ -204,7 +212,7 @@ router.put('/:id', authMiddleware, (req, res) => {
     }
 
     db.run(
-      'UPDATE fantasy_teams SET team_name = ?, lineup = ?, budget_spent = 0, captain_id = ? WHERE id = ?',
+      'UPDATE fantasy_teams SET team_name = ?, lineup = ?, captain_id = ? WHERE id = ?',
       [teamName || team.team_name, JSON.stringify(lineup.map(String)), String(captainId), teamId],
       (err) => {
         if (err) {
