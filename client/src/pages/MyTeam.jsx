@@ -182,6 +182,12 @@ function MyTeam() {
             </div>
           </div>
 
+          {breakdown.lineup.length === 0 && (isFinished || effectiveLocked) && (
+            <div className="panel" style={{ marginTop: '1rem' }}>
+              <p className="muted">You didn't build a team before the tournament started.</p>
+            </div>
+          )}
+
           <div className="myteam-players">
             {breakdown.lineup.map(player => (
               <div
