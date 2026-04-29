@@ -27,6 +27,7 @@ function TeamBuilder() {
   const [tournamentId, setTournamentId] = useState(null);
   const [warning, setWarning] = useState('');
   const [lockError, setLockError] = useState('');
+  const [cleanupNotice, setCleanupNotice] = useState('');
   const warningTimer = useRef(null);
   const lockErrorTimer = useRef(null);
 
@@ -80,9 +81,10 @@ function TeamBuilder() {
 
       // Fetch players for this league's tournament
       const res = await fetch(`${apiBase}/players?league_id=${leagueId}`);
+      let activePlayers = [];
       if (res.ok) {
-        const data = await res.json();
-        setPlayers(data);
+        activePlayers = await res.json();
+        setPlayers(activePlayers);
       }
 
       // Load existing team if any
@@ -92,8 +94,25 @@ function TeamBuilder() {
       if (teamRes.ok) {
         const t = await teamRes.json();
         setTeamName(t.team_name);
-        setSelected((t.lineup || []).map(String));
-        setCaptain(t.captain_id ? String(t.captain_id) : null);
+
+        const activeIds = new Set(activePlayers.map(p => String(p.id)));
+        const originalLineup = (t.lineup || []).map(String);
+        const validLineup = originalLineup.filter(id => activeIds.has(id));
+        const removedCount = originalLineup.length - validLineup.length;
+
+        setSelected(validLineup);
+
+        const captainId = t.captain_id ? String(t.captain_id) : null;
+        setCaptain(captainId && activeIds.has(captainId) ? captainId : null);
+
+        if (removedCount > 0) {
+          const noun = removedCount === 1 ? 'player' : 'players';
+          const verb = removedCount === 1 ? 'is' : 'are';
+          const replacement = removedCount === 1 ? 'a replacement' : 'replacements';
+          setCleanupNotice(
+            `${removedCount} ${noun} from your team ${verb} no longer available and ${removedCount === 1 ? 'has' : 'have'} been removed. Please pick ${replacement} and save again.`
+          );
+        }
       }
     };
     load();
@@ -259,6 +278,12 @@ function TeamBuilder() {
           <h2>Build Your Team</h2>
           <button className="btn-text small" onClick={() => navigate(tournamentId ? `/tournament/${tournamentId}/my-team?league=${leagueId}` : '/my-fantasy')}>← Back</button>
         </div>
+
+        {cleanupNotice && (
+          <div className="tb-warning">
+            {cleanupNotice}
+          </div>
+        )}
 
         <label>
           Team Name
