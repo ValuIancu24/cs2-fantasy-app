@@ -89,8 +89,6 @@ function initDatabase() {
       kills INTEGER,
       deaths INTEGER,
       assists INTEGER,
-      calculated_points REAL,
-      match_date DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(player_id, series_id, game_number),
       FOREIGN KEY (player_id) REFERENCES players(id),
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id)
@@ -131,6 +129,7 @@ function initDatabase() {
     db.run(`ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1`, () => {});
     db.run(`ALTER TABLE player_stats ADD COLUMN team_win INTEGER`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN banner_url TEXT`, () => {});
+    // Base price (fallback when no per-tournament price exists in player_tournaments)
     db.run(`ALTER TABLE players ADD COLUMN price INTEGER DEFAULT 190000`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN start_date TEXT`, () => {});
     db.run(`ALTER TABLE tournaments ADD COLUMN end_date TEXT`, () => {});

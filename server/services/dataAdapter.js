@@ -231,8 +231,8 @@ async function syncTournamentStats(tournamentId) {
 
             await dbRun(
               `INSERT OR REPLACE INTO player_stats
-               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, calculated_points, team_win, match_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)`,
+               (player_id, series_id, tournament_id, game_number, kills, deaths, assists, team_win)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
               [dbPlayer.id, seriesId, tournamentId, game.sequenceNumber,
                player.kills, player.deaths, player.killAssistsGiven, teamWon]
             );
