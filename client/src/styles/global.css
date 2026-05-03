@@ -61,6 +61,7 @@ button {
   padding-bottom: 3px;
   border-bottom: 2px solid transparent;
   transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
 }
 
 .nav-links a:hover {

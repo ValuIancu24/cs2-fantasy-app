@@ -63,7 +63,7 @@ function NavLinks({ user }) {
           {teamBuilderMatch && navTournamentId && (
             <NavLink to={`/tournament/${navTournamentId}/players`}>Players</NavLink>
           )}
-          {user.role === 'admin' && <NavLink to="/admin" end>Admin</NavLink>}
+          {user.role === 'admin' && <NavLink to="/admin" end>Admin Dashboard</NavLink>}
         </>
       )}
     </nav>
