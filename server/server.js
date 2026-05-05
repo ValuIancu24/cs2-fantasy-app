@@ -35,8 +35,6 @@ const uploadsPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'p
 app.use('/uploads/profiles', express.static(uploadsPath));
 const bannersPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'banners');
 app.use('/uploads/banners', express.static(bannersPath));
-const matchesPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'matches');
-app.use('/uploads/matches', express.static(matchesPath));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
