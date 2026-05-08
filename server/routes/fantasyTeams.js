@@ -5,7 +5,6 @@ const { getTournamentLockTime, isTournamentLocked } = require('../services/lockH
 
 const router = express.Router();
 
-// Calculate and persist total_points, rating_points, team_points for a fantasy team
 function recalcTeamPoints(teamId, lineup, tournamentId, captainId, cb) {
   if (!lineup || lineup.length === 0) return cb(null, 0);
 
