@@ -372,7 +372,7 @@ async function recalculateFantasyPoints(tournamentId) {
   console.log(`[DATA ADAPTER] Recalculating fantasy points for tournament ${tournamentId}...`);
 
   const teams = await dbAll(
-    `SELECT ft.id, ft.lineup
+    `SELECT ft.id, ft.lineup, ft.captain_id
      FROM fantasy_teams ft
      JOIN leagues l ON ft.league_id = l.id
      WHERE l.tournament_id = ?`,
@@ -381,8 +381,10 @@ async function recalculateFantasyPoints(tournamentId) {
 
   for (const team of teams) {
     const lineup = JSON.parse(team.lineup || '[]');
+    const captainId = team.captain_id;
     let totalRating = 0;
     let totalTeam = 0;
+    let totalFp = 0;
 
     for (const playerId of lineup) {
       const kdaRow = await dbGet(
@@ -394,7 +396,8 @@ async function recalculateFantasyPoints(tournamentId) {
          )`,
         [playerId, tournamentId]
       );
-      totalRating += kdaRow?.total || 0;
+      const rating = kdaRow?.total || 0;
+      totalRating += rating;
 
       const teamRow = await dbGet(
         `SELECT
@@ -404,12 +407,16 @@ async function recalculateFantasyPoints(tournamentId) {
          WHERE player_id = ? AND tournament_id = ?`,
         [playerId, tournamentId]
       );
-      totalTeam += ((teamRow?.wins || 0) * 15) - ((teamRow?.losses || 0) * 15);
+      const teamPts = ((teamRow?.wins || 0) * 15) - ((teamRow?.losses || 0) * 15);
+      totalTeam += teamPts;
+
+      const mult = String(playerId) === String(captainId) ? 2 : 1;
+      totalFp += (rating + teamPts) * mult;
     }
 
     await dbRun(
       'UPDATE fantasy_teams SET rating_points = ?, team_points = ?, total_points = ? WHERE id = ?',
-      [totalRating, totalTeam, totalRating + totalTeam, team.id]
+      [totalRating, totalTeam, totalFp, team.id]
     );
   }
 
