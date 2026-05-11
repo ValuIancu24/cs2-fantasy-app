@@ -78,7 +78,7 @@ function AdminDashboard() {
           setAllTournaments(data);
           const active = data.filter(t => t.status === 'active');
           setActiveTournaments(active);
-          if (data.length > 0) {
+          if (data.length > 0 && !bannerTournamentId) {
             setBannerTournamentId(String(data[0].id));
             setBannerPreview(data[0].banner_url || '');
           }
@@ -193,6 +193,7 @@ function AdminDashboard() {
           `✅ Sync complete: ${data.teams} teams, ${data.players} players, ${data.matches} matches`
         );
         fetchStats();
+        fetchAllTournaments();
       }
     } catch {
       setTournamentMessage('Network error');

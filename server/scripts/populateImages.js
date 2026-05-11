@@ -73,8 +73,7 @@ function run() {
         const norm = normalize(p.nickname);
         const file = playerFiles.get(norm) || null;
         if (file) {
-          const ext = path.parse(file).ext;
-          const url = `/images/players/${norm}${ext}`;
+          const url = `/images/players/${file}`;
           db.run('UPDATE players SET image_url = ? WHERE id = ?', [url, p.id]);
           matched++;
         } else {
