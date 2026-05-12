@@ -25,7 +25,7 @@ function PasswordChecklist({ password }) {
 }
 
 function Register() {
-  const { apiBase } = useContext(AuthContext);
+  const { apiBase, setUser } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,8 +62,10 @@ function Register() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Registration failed');
-      setSuccess('Registration successful. You can now sign in.');
-      setTimeout(() => navigate('/login'), 1000);
+      localStorage.setItem('cs2_fantasy_token', data.token);
+      localStorage.setItem('cs2_fantasy_user', JSON.stringify(data.user));
+      setUser(data.user);
+      navigate('/my-fantasy', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

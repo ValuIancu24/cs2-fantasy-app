@@ -66,7 +66,16 @@ router.post('/register', (req, res) => {
       [username, email, hash, 'user'],
       function(err) {
         if (err) return res.status(500).json({ message: 'Registration failed' });
-        res.status(201).json({ message: 'Registration successful', userId: this.lastID });
+        const newUser = {
+          id: this.lastID,
+          username,
+          email,
+          role: 'user',
+          country_code: null,
+          profile_picture: null
+        };
+        const token = generateToken(newUser);
+        res.status(201).json({ message: 'Registration successful', token, user: newUser });
       }
     );
   });

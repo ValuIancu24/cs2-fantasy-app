@@ -7,8 +7,8 @@
 
 .teambuilder > .panel:first-child {
   position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
+  top: 5rem;
+  max-height: calc(100vh - 6rem);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(210, 168, 255, 0.3) transparent;
