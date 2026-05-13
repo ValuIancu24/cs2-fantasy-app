@@ -29,7 +29,7 @@ function Login() {
       localStorage.setItem('cs2_fantasy_token', data.token);
       localStorage.setItem('cs2_fantasy_user', JSON.stringify(data.user));
       setUser(data.user);
-      navigate('/my-fantasy', { replace: true });
+      navigate(data.user.role === 'admin' ? '/admin' : '/my-fantasy', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
