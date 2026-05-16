@@ -423,7 +423,7 @@ async function recalculateFantasyPoints(tournamentId) {
   console.log(`[DATA ADAPTER] ✅ Recalculated points for ${teams.length} fantasy teams`);
 }
 
-// ── Shared scoring helper (bulk query, no N+1) ───────────────────────────────
+
 
 async function computePlayerScores(tournamentId, playerIds) {
   if (playerIds.length === 0) return new Map();
@@ -490,7 +490,6 @@ async function computePlayerScores(tournamentId, playerIds) {
   return result;
 }
 
-// ── SQLite promise helpers ───────────────────────────────────────────────────
 
 function dbRun(sql, params = []) {
   return new Promise((resolve, reject) => {
