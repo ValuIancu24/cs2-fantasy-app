@@ -297,7 +297,7 @@ async function findPlayer(player, tournamentId) {
   return byAlias || null;
 }
 
-// Insert player if not exists (preserving is_active), then upsert tournament association
+
 async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
   await dbRun(
     `INSERT OR IGNORE INTO players (id, nickname, is_active) VALUES (?, ?, 1)`,
@@ -318,13 +318,13 @@ async function upsertPlayer(playerId, nickname, teamId, tournamentId) {
 async function calculatePrices(tournamentId) {
   console.log(`[DATA ADAPTER] Calculating prices for tournament ${tournamentId}...`);
 
-  // Reset all players in this tournament to default price (per-tournament column)
+  
   await dbRun(
     `UPDATE player_tournaments SET price = 190000 WHERE tournament_id = ?`,
     [tournamentId]
   );
 
-  // Only calculate for active players — inactive ones keep the 190000 default
+  
   const players = await dbAll(
     `SELECT pt.player_id FROM player_tournaments pt
      JOIN players p ON p.id = pt.player_id
