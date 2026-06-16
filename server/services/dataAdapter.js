@@ -20,7 +20,6 @@ async function syncTournament(tournamentId) {
   const tournamentName = firstMatch.tournament.name;
   const tournamentNameShort = firstMatch.tournament.nameShortened;
 
-  // Find earliest and latest match dates
   const matchDates = matchesData.edges
     .map(e => e.node.startTimeScheduled)
     .filter(Boolean)
@@ -42,7 +41,6 @@ async function syncTournament(tournamentId) {
   );
   console.log(`[DATA ADAPTER] Tournament "${tournamentName}" saved`);
 
-  // Collect unique teams across all series
   const teamsMap = new Map();
   matchesData.edges.forEach(edge => {
     edge.node.teams.forEach(team => {
@@ -61,7 +59,6 @@ async function syncTournament(tournamentId) {
   }
   console.log(`[DATA ADAPTER] ${teamsMap.size} teams saved`);
 
-  // Populate series_cache in a single transaction
   await dbRun('BEGIN');
   try {
     for (const edge of matchesData.edges) {
@@ -81,7 +78,6 @@ async function syncTournament(tournamentId) {
   }
   console.log(`[DATA ADAPTER] ${matchesData.edges.length} series cached`);
 
-  // Fetch rosters for each team
   let totalPlayers = await syncRosters(teamsMap, tournamentId);
 
   // Second pass: retry teams that ended up with 0 players
@@ -142,7 +138,6 @@ async function syncTournamentStats(tournamentId) {
     throw new Error('No matches found for this tournament');
   }
 
-  // Build series metadata + teamName→teamId map
   const seriesInfoMap = new Map();
   const teamNameToId = new Map();
 
@@ -194,13 +189,11 @@ async function syncTournamentStats(tournamentId) {
       if (!seriesState.finished) { seriesSkipped++; await sleep(500); continue; }
       if (!seriesState.games || seriesState.games.length === 0) { seriesSkipped++; await sleep(500); continue; }
 
-      // Determine which team won this series
       const winningTeamName = (seriesState.teams || []).find(t => t.won)?.name?.toLowerCase() || null;
 
       for (const game of seriesState.games) {
         for (const team of game.teams) {
           const teamWon = winningTeamName === null ? null : (team.name.toLowerCase() === winningTeamName ? 1 : 0);
-          // Auto-fetch roster if team has no players in DB
           const teamId = teamNameToId.get(team.name.toLowerCase());
           if (teamId) {
             const teamPlayerCount = await dbGet(
@@ -266,7 +259,6 @@ async function syncTournamentStats(tournamentId) {
 
 // Find a player by: 1) Grid API ID, 2) case-insensitive nickname, 3) alias
 async function findPlayer(player, tournamentId) {
-  // 1. Match by Grid API player ID
   if (player.id) {
     const byId = await dbGet(
       `SELECT p.id FROM players p
@@ -277,7 +269,6 @@ async function findPlayer(player, tournamentId) {
     if (byId) return byId;
   }
 
-  // 2. Case-insensitive nickname match
   const byNick = await dbGet(
     `SELECT p.id FROM players p
      JOIN player_tournaments pt ON pt.player_id = p.id
@@ -286,7 +277,6 @@ async function findPlayer(player, tournamentId) {
   );
   if (byNick) return byNick;
 
-  // 3. Alias match
   const byAlias = await dbGet(
     `SELECT p.id FROM players p
      JOIN player_aliases pa ON pa.player_id = p.id
@@ -453,7 +443,6 @@ async function computePlayerScores(tournamentId, playerIds) {
     [...playerIds, tournamentId, tournamentId, tournamentId]
   );
 
-  // Group rows: player → tournament → series[]
   const playerMap = new Map();
   for (const row of rows) {
     if (!playerMap.has(row.player_id)) playerMap.set(row.player_id, new Map());

@@ -1,67 +1,47 @@
-# CS2 Fantasy Esports App
+# CS2 Fantasy
 
-A full-stack Counter-Strike 2 fantasy esports web application with leagues, team builder, match simulations, and leaderboards.
+Fantasy esports web app for Counter-Strike 2. You pick a 5-player roster within a budget, join leagues with friends, and score points from real match results pulled from the GRID API.
 
-## Tech Stack
+## Stack
 
-- **Frontend**: Vite + React 18, React Router v6, CSS Modules (plain CSS files), Fetch API
-- **Backend**: Node.js, Express, SQLite (sqlite3), bcrypt, JSON Web Tokens (JWT), CORS, Multer
+- **Frontend:** React 18 + Vite, React Router v6
+- **Backend:** Node.js + Express, SQLite (`sqlite3`), JWT auth
+- **Data source:** GRID GraphQL API (central-data + live series-state)
+- **Scheduling:** `node-cron` for periodic stats/tournament sync
 
-## Project Structure
+## Running it
 
-- `client/` — Vite + React frontend
-- `server/` — Node.js + Express backend with SQLite
-- `data/` — Static JSON data for players, teams, and scenarios
+Two npm projects. You'll need a `.env` in the project root:
 
-## Setup Instructions
-
-### 1. Environment Variables
-
-Create a `.env` file in the project root:
-```bash
-JWT_SECRET=your-secret-key-here
+```
+JWT_SECRET=something-secret
+GRID_API_KEY=your-grid-key
 PORT=5000
+LOCK_TEAMS_ENABLED=true
 ```
 
-### 2. Backend Setup
+`GRID_API_KEY` is required — the backend will refuse to start without it. `LOCK_TEAMS_ENABLED` controls whether team-building is blocked once a tournament's first match has started; flip it to `false` if you want to keep editing teams during development.
+
 ```bash
-cd server
-npm install
-npm start
+cd server && npm install && npm run dev
+cd client && npm install && npm run dev
 ```
 
-The backend will start on `http://localhost:5000`.
+API on `localhost:5000`, UI on `localhost:5173`. The SQLite file (`server/database.db`) is created on first run, and a default admin (`admin` / `admin123`) gets seeded if there isn't one already.
 
-### 3. Frontend Setup
-```bash
-cd client
-npm install
-npm run dev
+## How a tournament gets in
+
+An admin pastes a tournament ID (e.g. : 829465) into the admin dashboard and then follows the user manual guide on the admin workflow.
+
+If auto-sync is on, a 30s cron refreshes stats while matches are live. When the tournament's over, the admin flips its status to `historical` and from that point its data feeds the **player price calculation** for new tournaments (prices come from a weighted average of recent historical performance).
+
+## Layout
+
 ```
-
-The frontend will start on `http://localhost:5173`.
-
-## Default Admin Credentials
-
-- **Username**: `admin`
-- **Password**: `admin123`
-
-These credentials are inserted automatically into the database on first server startup if no admin user exists.
-
-## Basic Flow to Test
-
-1. Start backend: `cd server && npm install && npm start`
-2. Start frontend: `cd client && npm install && npm run dev`
-3. Register a new user at `http://localhost:5173`
-4. Login with the new user
-5. Create a league
-6. Build a fantasy team (select 5 players within budget)
-7. Login as admin (`admin` / `admin123`)
-8. Simulate matches from the admin dashboard
-9. View league leaderboard
-
-## Development Notes
-
-- Database file: `server/database.db` (auto-created on first run)
-- SQLite3 package used instead of better-sqlite3 for Windows compatibility
-- All routes converted to async callbacks for sqlite3 compatibility
+client/   Vite + React frontend
+server/   Express + SQLite backend
+  routes/         HTTP endpoints
+  services/       GRID adapter, auto-sync cron, lock helper
+  middleware/     JWT + admin guards
+  migrations/     schema additions, run on startup
+```

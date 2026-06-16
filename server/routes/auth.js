@@ -43,7 +43,6 @@ function generateToken(user) {
   );
 }
 
-// REGISTER
 router.post('/register', (req, res) => {
   const { username, email, password } = req.body;
 
@@ -81,7 +80,6 @@ router.post('/register', (req, res) => {
   });
 });
 
-// LOGIN
 router.post('/login', (req, res) => {
   const { usernameOrEmail, password } = req.body;
 
@@ -111,7 +109,6 @@ router.post('/login', (req, res) => {
   });
 });
 
-// GET PROFILE
 router.get('/profile', authMiddleware, (req, res) => {
   db.get('SELECT id, username, email, role, country_code, profile_picture, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -120,7 +117,6 @@ router.get('/profile', authMiddleware, (req, res) => {
   });
 });
 
-// UPDATE PROFILE
 router.put('/profile', authMiddleware, (req, res) => {
   const { email, country_code } = req.body;
 
@@ -145,7 +141,6 @@ router.put('/profile', authMiddleware, (req, res) => {
   });
 });
 
-// CHANGE PASSWORD
 router.put('/password', authMiddleware, (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -170,7 +165,6 @@ router.put('/password', authMiddleware, (req, res) => {
   });
 });
 
-// UPLOAD PROFILE PICTURE
 router.post('/profile-picture', authMiddleware, upload.single('profile_picture'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 

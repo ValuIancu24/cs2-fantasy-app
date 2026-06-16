@@ -142,7 +142,6 @@ function PlayerProfile() {
 
   const singleName = tournaments[0]?.name || '';
 
-  // Chart 1 — line
   const series1 = useMemo(() => buildSeries(tournaments, sel1), [tournaments, sel1]);
   const lineData = useMemo(() =>
     series1.map((s, i) => ({ ...s, idx: i, date: fmtDate(s.scheduled_at) })),
@@ -152,7 +151,6 @@ function PlayerProfile() {
     ? (tournaments[1]?.series?.length || 0) - 0.5
     : null;
 
-  // Chart 2 — radar
   const radarSeries = useMemo(() => buildSeries(tournaments, sel2), [tournaments, sel2]);
 
   const radarData = useMemo(() => {
@@ -168,7 +166,6 @@ function PlayerProfile() {
     ];
   }, [radarSeries]);
 
-  // Chart 3 — vertical bar
   const series3 = useMemo(() => buildSeries(tournaments, sel3), [tournaments, sel3]);
   const barData = useMemo(() => series3.map((s, i) => ({
     ...s,
@@ -183,7 +180,6 @@ function PlayerProfile() {
   const tournLabels1 = useMemo(() => makeTournLabels(sel1, tournaments), [sel1, tournaments]);
   const tournLabels3 = useMemo(() => makeTournLabels(sel3, tournaments), [sel3, tournaments]);
 
-  // Chart 4 — doughnut
   const series4 = useMemo(() => buildSeries(tournaments, sel4), [tournaments, sel4]);
   const doughnutData = useMemo(() => {
     const wins   = series4.filter(s => s.team_win === 1).length;
@@ -214,8 +210,6 @@ function PlayerProfile() {
       });
     }
   };
-
-  // ── Custom tooltips ──────────────────────────────────────────────────────────
 
   const renderLineTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
@@ -333,7 +327,6 @@ function PlayerProfile() {
       {player && !loading && hasTournaments && (
         <div className="charts-grid">
 
-          {/* Chart 1 — Line: Fantasy Points per Match */}
           <div id="chart-line" className="chart-panel">
             <div className="chart-title">
               Fantasy Points per Match
@@ -383,7 +376,6 @@ function PlayerProfile() {
             </p>
           </div>
 
-          {/* Chart 2 — Radar: Average Stats */}
           <div className="chart-panel">
             <div className="chart-title">
               Average Stats
@@ -409,7 +401,6 @@ function PlayerProfile() {
             </p>
           </div>
 
-          {/* Chart 3 — Vertical Bar: Performance Points per Match */}
           <div id="chart-bar" className="chart-panel">
             <div className="chart-title">
               Performance Points per Match
@@ -470,7 +461,6 @@ function PlayerProfile() {
             </p>
           </div>
 
-          {/* Chart 4 — Doughnut: Win/Loss Ratio */}
           <div className="chart-panel">
             <div className="chart-title">
               Win / Loss Ratio

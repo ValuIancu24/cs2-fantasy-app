@@ -8,9 +8,6 @@ const PLAYER_SELECT = `SELECT p.id, p.nickname, pt.team_id, pt.tournament_id, CO
        JOIN player_tournaments pt ON pt.player_id = p.id
        LEFT JOIN teams t ON t.id = pt.team_id AND t.tournament_id = pt.tournament_id`;
 
-// GET /api/players?league_id=X      → players from that league's tournament
-// GET /api/players?tournament_id=X  → players from that tournament
-// GET /api/players                  → all players in DB (fallback)
 router.get('/', (req, res) => {
   const leagueId = req.query.league_id ? parseInt(req.query.league_id, 10) : null;
   const tournamentId = req.query.tournament_id ? parseInt(req.query.tournament_id, 10) : null;
@@ -61,7 +58,6 @@ router.get('/', (req, res) => {
   });
 });
 
-// GET /api/players/:playerId/stats?tournament_id=X
 router.get('/:playerId/stats', (req, res) => {
   const playerId = req.params.playerId;
   const tournamentId = req.query.tournament_id ? parseInt(req.query.tournament_id, 10) : null;
@@ -172,7 +168,6 @@ router.get('/:playerId/stats', (req, res) => {
   );
 });
 
-// GET /api/players/:playerId?tournament_id=X
 router.get('/:playerId', (req, res) => {
   const playerId = parseInt(req.params.playerId, 10);
   const tournamentId = req.query.tournament_id ? parseInt(req.query.tournament_id, 10) : null;

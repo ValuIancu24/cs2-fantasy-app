@@ -14,7 +14,6 @@
   gap: 3rem;
 }
 
-/* ── Animated glow orbs ── */
 .home-glow {
   position: absolute;
   border-radius: 50%;
@@ -54,7 +53,6 @@
   50%       { transform: scale(1.18); opacity: 1;   }
 }
 
-/* ── Left content ── */
 .home-content {
   max-width: 500px;
   position: relative;
@@ -118,7 +116,6 @@
   transform: translateY(-2px);
 }
 
-/* ── Right preview cards ── */
 .home-preview {
   position: relative;
   z-index: 1;
@@ -148,7 +145,6 @@
   margin-bottom: 0.75rem;
 }
 
-/* Leaderboard card */
 .home-card-leaderboard .home-card-row {
   display: flex;
   align-items: center;
@@ -176,7 +172,6 @@
   white-space: nowrap;
 }
 
-/* Team card */
 .home-card-team {
   transform: translateX(1.25rem);
 }
@@ -220,7 +215,6 @@
   letter-spacing: 0.08em;
 }
 
-/* ── Responsive ── */
 @media (max-width: 960px) {
   .home-hero {
     flex-direction: column;

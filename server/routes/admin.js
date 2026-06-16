@@ -9,11 +9,9 @@ const dataAdapter = require('../services/dataAdapter');
 
 const router = express.Router();
 
-// Ensure banners upload directory exists
 const bannersDir = path.join(__dirname, '..', '..', 'client', 'public', 'uploads', 'banners');
 fs.mkdirSync(bannersDir, { recursive: true });
 
-// Multer config for tournament banners
 const ALLOWED_MIME_EXTENSIONS = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
@@ -40,8 +38,6 @@ const uploadBanner = multer({
   }
 });
 
-// ── STATS ────────────────────────────────────────────────────────────────────
-
 router.get('/stats', authMiddleware, requireAdmin, (req, res) => {
   db.get('SELECT COUNT(*) as c FROM users', [], (e1, r1) => {
     db.get('SELECT COUNT(*) as c FROM leagues', [], (e2, r2) => {
@@ -61,8 +57,6 @@ router.get('/stats', authMiddleware, requireAdmin, (req, res) => {
     });
   });
 });
-
-// ── TOURNAMENT SYNC ──────────────────────────────────────────────────────────
 
 router.get('/tournament/:tournamentId/matches', authMiddleware, requireAdmin, async (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
@@ -136,9 +130,6 @@ router.post('/calculate-prices/:tournamentId', authMiddleware, requireAdmin, asy
   }
 });
 
-// ── PLAYER MANAGEMENT ────────────────────────────────────────────────────────
-
-// GET players for a tournament, grouped by team
 router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
 
@@ -153,7 +144,6 @@ router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (r
     (err, players) => {
       if (err) return res.status(500).json({ message: 'Database error' });
 
-      // Group by team
       const teamsMap = {};
       (players || []).forEach(p => {
         const key = p.team_name || 'Unknown';
@@ -166,7 +156,6 @@ router.get('/tournament/:tournamentId/players', authMiddleware, requireAdmin, (r
   );
 });
 
-// GET aliases for a player
 router.get('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, res) => {
   db.all(
     'SELECT id, alias FROM player_aliases WHERE player_id = ?',
@@ -178,7 +167,6 @@ router.get('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, res
   );
 });
 
-// TOGGLE player active status
 router.patch('/players/:playerId/active', authMiddleware, requireAdmin, (req, res) => {
   const { is_active } = req.body;
   db.run(
@@ -191,7 +179,6 @@ router.patch('/players/:playerId/active', authMiddleware, requireAdmin, (req, re
   );
 });
 
-// ADD alias for a player
 router.post('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, res) => {
   const { alias } = req.body;
   if (!alias || !alias.trim()) return res.status(400).json({ message: 'Alias required' });
@@ -206,7 +193,6 @@ router.post('/players/:playerId/aliases', authMiddleware, requireAdmin, (req, re
   );
 });
 
-// DELETE alias
 router.delete('/player-aliases/:aliasId', authMiddleware, requireAdmin, (req, res) => {
   db.run('DELETE FROM player_aliases WHERE id = ?', [req.params.aliasId], (err) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -214,9 +200,6 @@ router.delete('/player-aliases/:aliasId', authMiddleware, requireAdmin, (req, re
   });
 });
 
-// ── TOURNAMENT STATUS ─────────────────────────────────────────────────────────
-
-// GET all tournaments (for admin management)
 router.get('/tournaments', authMiddleware, requireAdmin, (_req, res) => {
   db.all(
     `SELECT id, name, name_short, status, is_visible, last_synced, banner_url, start_date, end_date, auto_sync_stats, auto_sync_tournament,
@@ -230,7 +213,6 @@ router.get('/tournaments', authMiddleware, requireAdmin, (_req, res) => {
   );
 });
 
-// PATCH /api/admin/tournaments/:id/status — mark as historical or toggle visibility
 router.patch('/tournaments/:id/status', authMiddleware, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -263,7 +245,6 @@ router.patch('/tournaments/:id/status', authMiddleware, requireAdmin, (req, res)
   });
 });
 
-// PATCH /api/admin/tournaments/:id/auto-sync — toggle auto_sync_stats or auto_sync_tournament
 router.patch('/tournaments/:id/auto-sync', authMiddleware, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -285,7 +266,6 @@ router.patch('/tournaments/:id/auto-sync', authMiddleware, requireAdmin, (req, r
   );
 });
 
-// GET /api/admin/tournaments/:id/sync-logs — last sync log per type
 router.get('/tournaments/:id/sync-logs', authMiddleware, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   db.all(
@@ -301,7 +281,6 @@ router.get('/tournaments/:id/sync-logs', authMiddleware, requireAdmin, (req, res
   );
 });
 
-// DELETE /api/admin/tournaments/:id — delete tournament and all related data
 router.delete('/tournaments/:id', authMiddleware, requireAdmin, (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -330,8 +309,6 @@ router.delete('/tournaments/:id', authMiddleware, requireAdmin, (req, res) => {
     });
   });
 });
-
-// ── TOURNAMENT BANNER ─────────────────────────────────────────────────────────
 
 router.post('/tournaments/:id/banner', authMiddleware, requireAdmin,
   (req, res, next) => {

@@ -4,7 +4,6 @@
   padding: 0 4rem 3rem;
 }
 
-/* ── Tournament Header ── */
 .matches-header {
   display: flex;
   align-items: center;
@@ -50,7 +49,6 @@
   box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
 }
 
-/* ── Section titles ── */
 .matches-section-title {
   font-size: 0.78rem;
   font-weight: 700;
@@ -60,7 +58,6 @@
   margin: 1.5rem 0 0.6rem;
 }
 
-/* ── Match card ── */
 .match-card {
   display: grid;
   grid-template-columns: 80px 1fr auto;
@@ -183,7 +180,6 @@
 .score-value.win { color: #60e6b8; }
 .score-value.loss { color: #ff6b81; }
 
-/* ── Match Detail ── */
 .match-detail-page {
   width: 100vw;
   margin-left: calc(-50vw + 50%);
@@ -314,7 +310,6 @@
   margin-top: 0.2rem;
 }
 
-/* ── Player Stats Tables ── */
 .match-stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

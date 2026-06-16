@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../context/AuthContext.jsx';
 import '../styles/admin.css';
 
-// SQLite CURRENT_TIMESTAMP has no 'Z', so we must force UTC parsing
+// SQLite CURRENT_TIMESTAMP has no 'Z', must force UTC parsing
 const parseUTC = ts => new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z');
 
 function formatScheduledTime(isoString) {
@@ -22,7 +22,6 @@ function AdminDashboard() {
   const [pricesCalculating, setPricesCalculating] = useState(false);
   const [tournamentMessage, setTournamentMessage] = useState('');
 
-  // Player management
   const [manageTournamentId, setManageTournamentId] = useState('');
   const [playerTeams, setPlayerTeams] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
@@ -31,7 +30,6 @@ function AdminDashboard() {
   const [playerAliases, setPlayerAliases] = useState({});
   const [newAlias, setNewAlias] = useState({});
 
-  // Tournament banner
   const [activeTournaments, setActiveTournaments] = useState([]);
   const [bannerTournamentId, setBannerTournamentId] = useState('');
   const [bannerFile, setBannerFile] = useState(null);
@@ -39,18 +37,15 @@ function AdminDashboard() {
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerSaving, setBannerSaving] = useState(false);
 
-  // Manage tournaments
   const [allTournaments, setAllTournaments] = useState([]);
   const [tournamentStatusMsg, setTournamentStatusMsg] = useState('');
 
-  // Price breakdown
   const [breakdownTournamentId, setBreakdownTournamentId] = useState('');
   const [breakdownData, setBreakdownData] = useState(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
   const [breakdownMessage, setBreakdownMessage] = useState('');
   const [expandedBreakdown, setExpandedBreakdown] = useState(null);
 
-  // Auto-sync
   const [syncLogs, setSyncLogs] = useState({});
   const [autoSyncToggles, setAutoSyncToggles] = useState({});
 
@@ -149,7 +144,6 @@ function AdminDashboard() {
     }
   };
 
-  // ── Tournament Sync ───────────────────────────────────────────────────────
 
   const fetchTournamentMatches = async () => {
     if (!tournamentId.trim()) {
@@ -249,7 +243,6 @@ function AdminDashboard() {
     }
   };
 
-  // ── Tournament Banner ─────────────────────────────────────────────────────
 
   const saveBanner = async () => {
     if (!bannerTournamentId || !bannerFile) return;
@@ -278,7 +271,6 @@ function AdminDashboard() {
     }
   };
 
-  // ── Price Breakdown ───────────────────────────────────────────────────────
 
   const loadPriceBreakdown = async () => {
     if (!breakdownTournamentId.trim()) return;
@@ -305,7 +297,6 @@ function AdminDashboard() {
     }
   };
 
-  // ── Player Management ─────────────────────────────────────────────────────
 
   const loadPlayers = async () => {
     if (!manageTournamentId.trim()) {
@@ -355,7 +346,7 @@ function AdminDashboard() {
   };
 
   const loadAliases = async (playerId) => {
-    if (playerAliases[playerId]) return; // already loaded
+    if (playerAliases[playerId]) return;
     try {
       const res = await fetch(`${apiBase}/admin/players/${playerId}/aliases`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -413,7 +404,6 @@ function AdminDashboard() {
 
   return (
     <div className="admin-grid">
-      {/* ── Tournament Sync ── */}
       <section className="panel tournament-panel">
         <h2>Grid API — Tournament Sync</h2>
         <label>
@@ -506,7 +496,6 @@ function AdminDashboard() {
         )}
       </section>
 
-      {/* ── Stats ── */}
       <section className="panel">
         <h2>Statistics</h2>
         {stats ? (
@@ -522,7 +511,6 @@ function AdminDashboard() {
         )}
       </section>
 
-      {/* ── Tournament Banner ── */}
       <section className="panel">
         <h2>Tournament Banner</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
@@ -583,7 +571,6 @@ function AdminDashboard() {
         {bannerMessage && <p className="info-text" style={{ marginTop: '0.5rem' }}>{bannerMessage}</p>}
       </section>
 
-      {/* ── Manage Players ── */}
       <section className="panel manage-players-panel">
         <h2>Manage Players</h2>
         <div className="scenario-row" style={{ marginBottom: '0.75rem' }}>
@@ -681,7 +668,6 @@ function AdminDashboard() {
         ))}
       </section>
 
-      {/* ── Manage Tournaments ── */}
       <section className="panel" style={{ gridColumn: '1 / -1', padding: '1.5rem 2rem' }}>
         <h2>Manage Tournaments</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
@@ -734,7 +720,6 @@ function AdminDashboard() {
                 <td style={{ textAlign: 'center', minWidth: '180px', padding: '0.85rem 0.75rem' }}>
                   {t.status === 'active' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'center' }}>
-                      {/* Stats toggle */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', width: '100%' }}>
                         <button
                           className={`btn-tiny${t.auto_sync_stats ? ' btn-active-sync' : ' btn-ghost'}`}
@@ -751,7 +736,6 @@ function AdminDashboard() {
                           </span>
                         )}
                       </div>
-                      {/* Tournament toggle */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', width: '100%' }}>
                         <button
                           className={`btn-tiny${t.auto_sync_tournament ? ' btn-active-sync' : ' btn-ghost'}`}
@@ -824,7 +808,6 @@ function AdminDashboard() {
         </table>
       </section>
 
-      {/* ── Price Breakdown ── */}
       <section className="panel price-breakdown-panel">
         <h2>Player Price Breakdown</h2>
         <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>

@@ -9,7 +9,6 @@ function mapsToWin(format) {
   return Math.ceil(n / 2);
 }
 
-// GET /api/matches/tournament/:tournamentId — all matches for tournament
 router.get('/tournament/:tournamentId', (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -104,7 +103,6 @@ router.get('/tournament/:tournamentId', (req, res) => {
   });
 });
 
-// GET /api/matches/:seriesId — single match detail
 router.get('/:seriesId', (req, res) => {
   const seriesId = req.params.seriesId;
 
@@ -136,7 +134,6 @@ router.get('/:seriesId', (req, res) => {
         return;
       }
 
-      // Get per-player stats aggregated across all games in series
       db.all(
         `SELECT ps.player_id, p.nickname, t.name AS team_name, t.image_url AS team_image_url,
                 SUM(ps.kills) AS kills,
@@ -154,7 +151,6 @@ router.get('/:seriesId', (req, res) => {
         (err, players) => {
           if (err) return res.status(500).json({ message: 'Database error' });
 
-          // Get total maps and winning team for score calculation
           db.get(
             `SELECT COUNT(DISTINCT ps.game_number) AS total_maps,
                     MAX(CASE WHEN ps.team_win = 1 THEN t.name ELSE NULL END) AS winning_team
@@ -172,7 +168,6 @@ router.get('/:seriesId', (req, res) => {
               const winnerScore = mapsNeeded;
               const loserScore = winningTeam ? Math.max(0, totalMaps - mapsNeeded) : 0;
 
-              // Group players by team, sorted by total fantasy points desc
               const teamMap = {};
               const teamImageMap = {};
               (players || []).forEach(p => {
@@ -185,7 +180,7 @@ router.get('/:seriesId', (req, res) => {
 
               Object.values(teamMap).forEach(arr => arr.sort((a, b) => b.total_points - a.total_points));
 
-              // Resolve series name → actual teams table name (handles AURORA vs Aurora Gaming etc.)
+              // Resolve series name → actual teams table name
               const resolveTeamName = (seriesName) => {
                 if (!seriesName) return seriesName;
                 const lower = seriesName.toLowerCase();

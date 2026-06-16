@@ -21,7 +21,6 @@ function createEmptyFantasyTeam(userId, leagueId, username, callback) {
   );
 }
 
-// CREATE LEAGUE
 router.post('/', authMiddleware, async (req, res) => {
   const { name, tournamentId, isPublic } = req.body;
 
@@ -82,7 +81,6 @@ router.post('/', authMiddleware, async (req, res) => {
   } // end insertLeague
 });
 
-// GET SINGLE LEAGUE INFO
 router.get('/:id/info', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.id, 10);
   if (!leagueId) return res.status(400).json({ message: 'Invalid league ID' });
@@ -102,7 +100,6 @@ router.get('/:id/info', authMiddleware, (req, res) => {
   );
 });
 
-// GET LEAGUES (all for admin, own for users)
 router.get('/', authMiddleware, (req, res) => {
   const isAdmin = req.user.role === 'admin';
 
@@ -132,7 +129,6 @@ router.get('/', authMiddleware, (req, res) => {
   });
 });
 
-// JOIN LEAGUE
 router.post('/:id/join', authMiddleware, async (req, res) => {
   if (req.user.role === 'admin') {
     return res.status(403).json({ message: 'Admins cannot join leagues as participants' });
@@ -177,7 +173,6 @@ router.post('/:id/join', authMiddleware, async (req, res) => {
   });
 });
 
-// LEAVE LEAGUE
 router.delete('/:id/leave', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.id, 10);
 
@@ -191,7 +186,6 @@ router.delete('/:id/leave', authMiddleware, (req, res) => {
   });
 });
 
-// GET LEAGUE MEMBERS
 router.get('/:id/members', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.id, 10);
 
@@ -214,7 +208,6 @@ router.get('/:id/members', authMiddleware, (req, res) => {
   });
 });
 
-// ADMIN: Rename league
 router.patch('/:id/name', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
   const leagueId = parseInt(req.params.id, 10);
@@ -239,7 +232,6 @@ router.patch('/:id/name', authMiddleware, (req, res) => {
   });
 });
 
-// ADMIN: Delete league
 router.delete('/:id', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'Admin only' });
   const leagueId = parseInt(req.params.id, 10);

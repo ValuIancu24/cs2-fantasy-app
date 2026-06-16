@@ -1,13 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './SearchableSelect.css';
 
-/**
- * Generic searchable dropdown.
- * options: [{ value, label }]
- * value: currently selected value
- * onChange: (value) => void
- * placeholder: string shown when nothing selected
- */
 function SearchableSelect({ options = [], value, onChange, placeholder = 'Select...' }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');

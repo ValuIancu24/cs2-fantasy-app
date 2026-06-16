@@ -19,28 +19,23 @@ function TournamentLeagues() {
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Create form state
   const [createName, setCreateName] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createMessage, setCreateMessage] = useState('');
   const [newInviteCode, setNewInviteCode] = useState('');
 
-  // Join modal state
   const [joinModal, setJoinModal] = useState(null);
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
 
-  // Intro modal (shown after create/join)
   const [introModal, setIntroModal] = useState(null);
   const [createToast, setCreateToast] = useState('');
 
-  // Admin edit state
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
 
-  // Search
   const [leagueSearch, setLeagueSearch] = useState('');
 
   const fetchLeagues = () => {
@@ -58,7 +53,6 @@ function TournamentLeagues() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Also fetch tournament info (name, banner, status)
     fetch(`${apiBase}/tournaments/${tournamentId}/info`)
       .then(r => r.ok ? r.json() : null)
       .then(t => {
@@ -70,7 +64,6 @@ function TournamentLeagues() {
       })
       .catch(() => {});
 
-    // Fetch lock time
     fetch(`${apiBase}/tournaments/${tournamentId}/lock-time`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setIsLocked(d.locked); })
@@ -221,7 +214,6 @@ function TournamentLeagues() {
       )}
 
       <div className="tl-layout" style={{ marginTop: '1.5rem' }}>
-        {/* LEFT: League list */}
         <div className="tl-list-section">
           {leagues.length > 0 && (
             <div className="tl-search-wrap">
@@ -381,7 +373,6 @@ function TournamentLeagues() {
           )}
         </div>
 
-        {/* RIGHT: Create league form — hidden for finished tournaments or after lock */}
         <div className="tl-create-section panel" style={isReadOnly || effectiveLocked ? { display: 'none' } : {}}>
 
           <h2>Create New League</h2>
@@ -450,7 +441,6 @@ function TournamentLeagues() {
         </div>
       </div>
 
-      {/* Create toast */}
       {createToast && (
         <div style={{
           position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
@@ -463,7 +453,6 @@ function TournamentLeagues() {
         </div>
       )}
 
-      {/* Intro modal — shown after create/join */}
       {introModal && (
         <div
           className="tl-modal-backdrop"
@@ -497,7 +486,6 @@ function TournamentLeagues() {
         </div>
       )}
 
-      {/* Join with code modal */}
       {joinModal && (
         <div className="tl-modal-backdrop" onClick={() => setJoinModal(null)}>
           <div className="tl-modal" onClick={e => e.stopPropagation()}>
