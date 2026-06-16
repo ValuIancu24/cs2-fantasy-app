@@ -54,7 +54,6 @@ function TeamBuilder() {
     }
 
     const load = async () => {
-      // Check if the tournament is finished — redirect to view-only
       const leagueInfoRes = await fetch(`${apiBase}/leagues/${leagueId}/info`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -66,7 +65,6 @@ function TeamBuilder() {
         }
         setTournamentId(league.tournament_id || null);
 
-        // Check lock — redirect non-admins if tournament has started
         if (!isAdmin && league.tournament_id) {
           const lockRes = await fetch(`${apiBase}/tournaments/${league.tournament_id}/lock-time`).catch(() => null);
           if (lockRes?.ok) {
@@ -79,7 +77,6 @@ function TeamBuilder() {
         }
       }
 
-      // Fetch players for this league's tournament
       const res = await fetch(`${apiBase}/players?league_id=${leagueId}`);
       let activePlayers = [];
       if (res.ok) {
@@ -87,7 +84,6 @@ function TeamBuilder() {
         setPlayers(activePlayers);
       }
 
-      // Load existing team if any
       const teamRes = await fetch(`${apiBase}/fantasy-teams/${leagueId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -202,7 +198,6 @@ function TeamBuilder() {
     setError('');
     setSuccess('');
 
-    // Re-check lock at save time for non-admins
     if (!isAdmin && tournamentId) {
       const lockRes = await fetch(`${apiBase}/tournaments/${tournamentId}/lock-time`).catch(() => null);
       if (lockRes?.ok) {

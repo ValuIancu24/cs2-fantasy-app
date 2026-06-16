@@ -2,8 +2,8 @@ const cron = require('node-cron');
 const db = require('../database');
 const dataAdapter = require('./dataAdapter');
 
-const STATS_INTERVAL = '*/30 * * * * *';      // every 30 seconds
-const TOURNAMENT_INTERVAL = '*/30 * * * * *';  // every 30 seconds
+const STATS_INTERVAL = '*/30 * * * * *';
+const TOURNAMENT_INTERVAL = '*/30 * * * * *';
 
 function logSync(tournamentId, type, status, message) {
   db.run(

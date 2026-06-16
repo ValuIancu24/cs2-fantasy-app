@@ -1,4 +1,3 @@
-/* ── Flip Card ── */
 .flip-card-wrapper {
   display: flex;
   flex-direction: column;
@@ -65,7 +64,6 @@
   cursor: not-allowed;
 }
 
-/* ── Select button (TeamBuilder) ── */
 .btn-select {
   width: 100%;
   font-size: 0.72rem;
@@ -99,7 +97,6 @@
   cursor: not-allowed;
 }
 
-/* ── Players page ── */
 .players-page {
   max-width: 1100px;
   margin: 0 auto;
@@ -185,7 +182,6 @@
   flex: 0 0 170px;
 }
 
-/* ── Photo card variant ── */
 .flip-card.flip-card-photo {
   height: 230px;
 }
@@ -241,7 +237,6 @@
   flex-shrink: 0;
 }
 
-/* ── Player Profile page ── */
 .player-profile-page {
   width: 100%;
   max-width: 100%;
@@ -299,7 +294,6 @@
   color: #a78bfa;
 }
 
-/* ── Player Profile Charts ── */
 .chart-selector-row {
   margin: 1rem 0 0.5rem;
   display: flex;

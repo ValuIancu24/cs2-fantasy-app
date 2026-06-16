@@ -4,7 +4,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-// Ensure DB is initialized
 require('./database');
 
 const { startAutoSync } = require('./services/autoSync');
@@ -30,7 +29,6 @@ app.use(
 
 app.use(express.json());
 
-// Static serving for uploaded images
 const uploadsPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'profiles');
 app.use('/uploads/profiles', express.static(uploadsPath));
 const bannersPath = path.join(__dirname, '..', 'client', 'public', 'uploads', 'banners');

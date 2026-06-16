@@ -4,7 +4,6 @@
   padding: 0 1rem 3rem;
 }
 
-/* ── Tournament hero banner ── */
 .tl-banner {
   position: relative;
   border-radius: 0 0 1rem 1rem;
@@ -32,7 +31,6 @@
   pointer-events: none;
 }
 
-/* subtle grid texture */
 .tl-banner::before {
   content: '';
   position: absolute;
@@ -89,7 +87,6 @@
   align-items: start;
 }
 
-/* League list */
 .tl-section-title {
   font-size: 0.72rem;
   font-weight: 700;
@@ -278,7 +275,6 @@
   color: #d2a8ff;
 }
 
-/* Inline invite code */
 .tl-invite-inline {
   display: inline-flex;
   align-items: center;
@@ -316,7 +312,6 @@
   color: #ff9600;
 }
 
-/* League search */
 .tl-search-wrap {
   position: relative;
   margin-bottom: 1rem;
@@ -357,7 +352,6 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Create form */
 .tl-create-section {
   position: sticky;
   top: 1rem;
@@ -401,7 +395,6 @@
   font-weight: 600;
 }
 
-/* Invite code display */
 .tl-invite-box {
   display: flex;
   align-items: center;
@@ -422,7 +415,6 @@
   flex: 1;
 }
 
-/* Modal */
 .tl-modal-backdrop {
   position: fixed;
   inset: 0;

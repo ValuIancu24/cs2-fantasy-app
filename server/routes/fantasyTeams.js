@@ -75,7 +75,6 @@ function validateLineup(lineup) {
   return null;
 }
 
-// CREATE FANTASY TEAM
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role === 'admin') {
     return res.status(403).json({ message: 'Admins cannot create fantasy teams' });
@@ -137,7 +136,6 @@ router.post('/', authMiddleware, async (req, res) => {
   );
 });
 
-// GET USER'S TEAM FOR LEAGUE
 router.get('/:leagueId', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.leagueId, 10);
 
@@ -174,7 +172,6 @@ router.get('/:leagueId', authMiddleware, (req, res) => {
   );
 });
 
-// UPDATE FANTASY TEAM
 router.put('/:id', authMiddleware, (req, res) => {
   if (req.user.role === 'admin') {
     return res.status(403).json({ message: 'Admins cannot edit fantasy teams' });
@@ -234,7 +231,6 @@ router.put('/:id', authMiddleware, (req, res) => {
   });
 });
 
-// GET TEAM BREAKDOWN — per player, per series K/D/A + points
 router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.leagueId, 10);
 
@@ -256,7 +252,6 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
 
       const placeholders = lineup.map(() => '?').join(',');
 
-      // Fetch player info
       db.all(
         `SELECT p.id, p.nickname, p.image_url AS player_image_url, t.name AS team_name, t.image_url AS team_image_url
          FROM players p
@@ -291,7 +286,6 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
           };
 
           lineup.forEach(playerId => {
-            // Per-series breakdown for this player
             db.all(
               `SELECT
                  ps.series_id,
@@ -336,7 +330,6 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
                   return;
                 }
 
-                // Fetch upcoming/ongoing series for this player's team (not yet finished, no TBD teams)
                 db.all(
                   `SELECT sc.id AS series_id, sc.team1_name, sc.team2_name, sc.format, sc.scheduled_at,
                           CASE WHEN datetime(sc.scheduled_at) > datetime('now') THEN 'upcoming' ELSE 'ongoing' END AS match_status,
@@ -393,7 +386,6 @@ router.get('/:leagueId/breakdown', authMiddleware, (req, res) => {
   );
 });
 
-// LEAGUE LEADERBOARD
 router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
   const leagueId = parseInt(req.params.leagueId, 10);
   const page = parseInt(req.query.page || '1', 10);
@@ -415,7 +407,6 @@ router.get('/league/:leagueId/leaderboard', authMiddleware, (req, res) => {
       db.get('SELECT COUNT(*) as count FROM fantasy_teams WHERE league_id = ?', [leagueId], (err, row) => {
         if (err) return res.status(500).json({ message: 'Database error' });
 
-        // Check user has a team before computing rank
         db.get(
           `SELECT id, total_points FROM fantasy_teams WHERE league_id = ? AND user_id = ?`,
           [leagueId, userId],

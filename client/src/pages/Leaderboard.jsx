@@ -30,7 +30,6 @@ function Leaderboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const all = await res.json();
-      // Filter to only leagues for this tournament
       const filtered = (Array.isArray(all) ? all : []).filter(
         l => String(l.tournament_id) === String(tournamentId)
       );
@@ -52,7 +51,6 @@ function Leaderboard() {
       .catch(() => {});
   }, [apiBase, tournamentId]);
 
-  // When league changes, reset and auto-jump to user's page
   useEffect(() => {
     if (!leagueId) return;
     setData(null);

@@ -12,12 +12,10 @@ function restoreBackup() {
       return;
     }
 
-    // Create a safety copy of current database before restoring
     const safetyPath = path.join(__dirname, '..', 'backups', 'database.before-restore.db');
     fs.copyFileSync(dbPath, safetyPath);
     console.log('✅ Safety copy created:', safetyPath);
 
-    // Restore from backup
     fs.copyFileSync(backupPath, dbPath);
     console.log('✅ Database restored from backup');
     console.log('ℹ️ Server needs to be restarted to apply changes');
@@ -27,7 +25,6 @@ function restoreBackup() {
   }
 }
 
-// Run if executed directly
 if (require.main === module) {
   restoreBackup();
 }

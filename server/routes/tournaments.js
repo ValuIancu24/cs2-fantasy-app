@@ -5,7 +5,6 @@ const { getTournamentLockTime, isTournamentLocked } = require('../services/lockH
 
 const router = express.Router();
 
-// GET /api/tournaments/active
 router.get('/active', (req, res) => {
   db.all(
     `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
@@ -19,7 +18,6 @@ router.get('/active', (req, res) => {
   );
 });
 
-// GET /api/tournaments/historical
 router.get('/historical', authMiddleware, (req, res) => {
   db.all(
     `SELECT id, name, name_short, status, start_date, end_date, last_synced, banner_url FROM tournaments
@@ -33,7 +31,6 @@ router.get('/historical', authMiddleware, (req, res) => {
   );
 });
 
-// GET /api/tournaments/:tournamentId/lock-time
 router.get('/:tournamentId/lock-time', async (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -45,7 +42,6 @@ router.get('/:tournamentId/lock-time', async (req, res) => {
   }
 });
 
-// GET /api/tournaments/:id/info
 router.get('/:tournamentId/info', (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
@@ -62,7 +58,6 @@ router.get('/:tournamentId/info', (req, res) => {
   );
 });
 
-// GET /api/tournaments/:tournamentId/leagues
 router.get('/:tournamentId/leagues', authMiddleware, (req, res) => {
   const tournamentId = parseInt(req.params.tournamentId, 10);
   if (!tournamentId) return res.status(400).json({ message: 'Invalid tournament ID' });
